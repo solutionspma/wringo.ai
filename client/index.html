@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wringo.ai – Voice Agent</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="top">
+        <div class="brand">
+          <div class="logo">W</div>
+          <div>
+            <h1>Wringo.ai</h1>
+            <p class="sub">Talk to Jason (Private Agent)</p>
+          </div>
+        </div>
+        <div id="pill" class="pill">Idle</div>
+      </header>
+
+      <section class="panel">
+        <button id="toggleBtn" class="btn">Start conversation</button>
+        <p class="hint">Mic required. Your API key stays on the server.</p>
+        <pre id="log" class="log" aria-live="polite"></pre>
+      </section>
+
+      <div id="orb" class="orb" title="Voice agent"></div>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
