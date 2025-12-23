@@ -257,8 +257,6 @@ export function attachTelnyxMediaWs(httpServer) {
           } else if (audioPayload && messageCount <= 10) {
             console.log(`⚠️  Not forwarding: elevenLabsWs=${!!elevenLabsWs}, ready=${isElevenLabsReady}`);
           }
-            }
-          }
         }
 
         // Handle stream stop
