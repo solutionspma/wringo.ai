@@ -7,6 +7,7 @@ import elevenlabsRoutes from "./routes/elevenlabs.js";
 import telnyxRoutes from "./routes/telnyx.js";
 import webhooksRoutes from "./routes/webhooks.js";
 import leadsRoutes from "./routes/leads.js";
+import referralsRoutes from "./routes/referrals.js";
 import { attachTelnyxMediaWs } from "./ws/telnyx-media.js";
 import modcrm from "./services/modcrm.js";
 
@@ -29,6 +30,7 @@ app.use("/api/elevenlabs", elevenlabsRoutes);
 app.use("/api/telnyx", telnyxRoutes);
 app.use("/api/webhooks", webhooksRoutes);
 app.use("/api/leads", leadsRoutes);
+app.use("/api/referrals", referralsRoutes);
 
 // modCRM status endpoint
 app.get("/api/modcrm/status", (_req, res) => {
@@ -46,7 +48,8 @@ server.listen(PORT, () => {
   console.log(`   - Telnyx inbound:    POST /api/telnyx/inbound`);
   console.log(`   - Webhooks:          POST /api/webhooks/elevenlabs`);
   console.log(`   - Leads API:         POST /api/leads`);
+  console.log(`   - Referrals API:     POST /api/referrals/capture`);
   console.log(`   - modCRM status:     GET  /api/modcrm/status`);
   console.log(`   - WebSocket:         WS   /ws/telnyx-media`);
-  console.log(`\n🔗 modCRM: ${modcrm.isConfigured() ? "✅ Configured" : "⚠️  Not configured (set MODCRM_API_URL & MODCRM_API_KEY)"}`);
+  console.log(`\n🔗 modCRM: ${modcrm.isConfigured() ? "✅ Configured" : "⚠️  Not configured (set MODCRM_SUPABASE_URL & MODCRM_SUPABASE_SERVICE_KEY)"}`);
 });

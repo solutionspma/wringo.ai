@@ -9,8 +9,36 @@
  */
 
 import { Router } from "express";
+import { createClient } from "@supabase/supabase-js";
 
 const router = Router();
+
+// Supabase client for leads + referrals tables
+const SUPABASE_URL = process.env.MODCRM_SUPABASE_URL || 'https://jchwuzfsztaxeautzprz.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.MODCRM_SUPABASE_SERVICE_KEY;
+
+let supabase = null;
+
+function getSupabaseClient() {
+  if (!supabase && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+      auth: { persistSession: false }
+    });
+  }
+  return supabase;
+}
+
+/**
+ * Generate a referral code like WRG-8F3A2
+ */
+function generateReferralCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'WRG-';
+  for (let i = 0; i < 5; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 // In-memory store for conversation data (in production, use Redis/DB)
 const conversationStore = new Map();
@@ -130,6 +158,10 @@ async function handleToolCall(event) {
       
     case "check_availability":
       result = await checkAvailability(toolInput);
+      break;
+      
+    case "capture_referral":
+      result = await captureReferral(conversationId, toolInput);
       break;
       
     default:
@@ -306,6 +338,123 @@ async function checkAvailability(data) {
     slots,
     message: `We have several openings on ${date}. Available times are: ${slots.join(", ")}.`
   };
+}
+
+/**
+ * TOOL: Capture referral information (AI Referral Engine™)
+ * 
+ * Called after user has received value and explicitly agrees to share.
+ * The LLM extracts referral info naturally from conversation.
+ */
+async function captureReferral(conversationId, data) {
+  const {
+    referrer_name,
+    referrer_contact,
+    referral_method,
+    referred_name,
+    referred_contact,
+    notes
+  } = data;
+
+  console.log(`[Referral Capture] Method: ${referral_method}`, data);
+
+  // Validate referral_method
+  const validMethods = ["share_link", "direct_intro", "provide_contact", "not_sure_yet"];
+  if (!referral_method || !validMethods.includes(referral_method)) {
+    return {
+      success: true,
+      message: "Thank you for your interest in sharing! Just let me know how you'd like to refer others."
+    };
+  }
+
+  const client = getSupabaseClient();
+  
+  if (!client) {
+    console.log("[Referral] Supabase not configured - storing locally");
+    logToLocalStore("referrals_pending", { ...data, conversationId });
+    return {
+      success: true,
+      message: "Thank you! We've noted your referral interest."
+    };
+  }
+
+  try {
+    // Generate unique referral code
+    const referralCode = generateReferralCode();
+
+    // Insert into referrals table
+    const { data: referral, error } = await client
+      .from("referrals")
+      .insert({
+        referrer_name,
+        referrer_contact,
+        referral_method,
+        referred_name,
+        referred_contact,
+        referral_code: referralCode,
+        notes,
+        conversation_id: conversationId,
+        source: "elevenlabs_agent",
+        status: "pending"
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[Referral] Insert error:", error);
+      logToLocalStore("referrals_pending", { ...data, conversationId });
+      return {
+        success: true,
+        message: "Thank you for your interest! We've noted your referral."
+      };
+    }
+
+    console.log(`[Referral Captured] Code: ${referralCode} | Method: ${referral_method}`);
+
+    // Build response based on referral method
+    let responseMessage = "";
+    let shareableLink = null;
+
+    switch (referral_method) {
+      case "share_link":
+        shareableLink = `https://wringoai.netlify.app/?ref=${referralCode}`;
+        responseMessage = `Perfect! Your unique referral link is ${shareableLink}. Share it with anyone who might benefit from AI voice solutions. We'll track any signups and credit them to you!`;
+        break;
+      
+      case "direct_intro":
+        responseMessage = `Wonderful! We'll prepare a warm introduction email for you to forward. Thank you for thinking of us!`;
+        break;
+      
+      case "provide_contact":
+        if (referred_name || referred_contact) {
+          responseMessage = `Thank you for connecting us with ${referred_name || "your contact"}! We'll reach out respectfully and keep you in the loop.`;
+        } else {
+          responseMessage = `Thanks! Whenever you're ready to share their info, just call back or email us.`;
+        }
+        break;
+      
+      case "not_sure_yet":
+        responseMessage = `No pressure at all! When you're ready, you can always call back. I've noted your interest for now.`;
+        break;
+      
+      default:
+        responseMessage = `Thank you for your interest in sharing! We really appreciate it.`;
+    }
+
+    return {
+      success: true,
+      message: responseMessage,
+      referral_code: referralCode,
+      shareable_link: shareableLink
+    };
+
+  } catch (err) {
+    console.error("[Referral] Error:", err);
+    return {
+      success: true,
+      message: "Thank you for your interest! We'll follow up soon."
+    };
+  }
 }
 
 /**
