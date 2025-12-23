@@ -3,31 +3,175 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wringo.ai – Voice Agent</title>
+    <title>Wringo.ai – AI Voice Operators for Business</title>
+    <meta name="description" content="AI voice operators that answer calls, guide visitors, and qualify leads — 24/7. Built by Pitch Marketing." />
     <link rel="stylesheet" href="./style.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>" />
   </head>
   <body>
-    <main class="wrap">
-      <header class="top">
-        <div class="brand">
+    <!-- Navigation -->
+    <nav class="nav">
+      <div class="nav-inner">
+        <a href="/" class="nav-brand">
           <div class="logo">W</div>
-          <div>
-            <h1>Wringo.ai</h1>
-            <p class="sub">Talk to Jason (Private Agent)</p>
+          <span>Wringo.ai</span>
+        </a>
+        <div class="nav-links">
+          <a href="/features.html">Features</a>
+          <a href="/pricing.html">Pricing</a>
+          <a href="/demo.html" class="nav-cta">Talk to Jason</a>
+        </div>
+        <button class="mobile-menu" aria-label="Menu">☰</button>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+      <div class="hero-inner">
+        <p class="hero-tag">AI Voice Operators</p>
+        <h1 class="hero-title">Your Business.<br/>Answered. In Your Voice.</h1>
+        <p class="hero-sub">Wringo.ai builds real-time AI voice operators that answer calls, guide website visitors, and qualify leads — 24/7, in your cloned voice.</p>
+        <div class="hero-ctas">
+          <a href="/demo.html" class="btn btn-primary">Talk to the Operator</a>
+          <a href="/pricing.html" class="btn btn-secondary">View Pricing</a>
+        </div>
+        <p class="hero-trust">Built by <a href="https://pitchmarketing.agency" target="_blank" rel="noopener">Pitch Marketing Strategies & PR</a></p>
+      </div>
+    </header>
+
+    <!-- What Wringo Does -->
+    <section class="section">
+      <div class="section-inner">
+        <h2 class="section-title">What Wringo Does</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">📞</div>
+            <h3>Answers Phone Calls</h3>
+            <p>Real PSTN phone lines answered by your AI operator. No hold music. No missed calls. Ever.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🌐</div>
+            <h3>Guides Website Visitors</h3>
+            <p>Embedded voice agent on your site. Visitors speak, Jason responds. Instant engagement.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3>Qualifies Leads</h3>
+            <p>Asks the right questions. Routes hot leads. Books appointments. All automatically.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎤</div>
+            <h3>Speaks in Your Voice</h3>
+            <p>Clone your voice or use our premium voices. Your brand. Your personality. 24/7.</p>
           </div>
         </div>
-        <div id="pill" class="pill">Idle</div>
-      </header>
+      </div>
+    </section>
 
-      <section class="panel">
-        <button id="toggleBtn" class="btn">Start conversation</button>
-        <p class="hint">Mic required. Your API key stays on the server.</p>
-        <pre id="log" class="log" aria-live="polite"></pre>
-      </section>
+    <!-- How It Works -->
+    <section class="section section-alt">
+      <div class="section-inner">
+        <h2 class="section-title">How It Works</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <h3>We Clone Your Voice</h3>
+            <p>Record a few minutes of audio. Our AI learns your tone, cadence, and personality.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <h3>We Build Your Operator</h3>
+            <p>Custom scripts, routing logic, and integrations tailored to your business.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <h3>We Deploy Everywhere</h3>
+            <p>Website widget. Phone number. API. Your operator is always on.</p>
+          </div>
+        </div>
+        <div class="cta-block">
+          <a href="/demo.html" class="btn btn-primary">Try It Now — Talk to Jason</a>
+        </div>
+      </div>
+    </section>
 
-      <div id="orb" class="orb" title="Voice agent"></div>
-    </main>
+    <!-- Social Proof -->
+    <section class="section">
+      <div class="section-inner">
+        <h2 class="section-title">Why Businesses Choose Wringo</h2>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-num">24/7</div>
+            <div class="stat-label">Availability</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">0</div>
+            <div class="stat-label">Missed Calls</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">&lt;1s</div>
+            <div class="stat-label">Response Time</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">∞</div>
+            <div class="stat-label">Scalability</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <script type="module" src="./app.js"></script>
+    <!-- CTA Section -->
+    <section class="section section-cta">
+      <div class="section-inner">
+        <h2 class="cta-title">Ready to Never Miss a Call Again?</h2>
+        <p class="cta-sub">Start with a free demo. Talk to Jason — our AI operator — right now.</p>
+        <div class="hero-ctas">
+          <a href="/demo.html" class="btn btn-primary">Start Free Demo</a>
+          <a href="https://pitchmarketing.agency/contact" target="_blank" class="btn btn-secondary">Contact Sales</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="logo">W</div>
+          <div>
+            <strong>Wringo.ai</strong>
+            <p>AI Voice Operators for Business</p>
+          </div>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="/features.html">Features</a>
+            <a href="/pricing.html">Pricing</a>
+            <a href="/demo.html">Demo</a>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <a href="https://pitchmarketing.agency" target="_blank">Pitch Marketing</a>
+            <a href="https://pitchmarketing.agency/about" target="_blank">About Us</a>
+            <a href="https://pitchmarketing.agency/contact" target="_blank">Contact</a>
+          </div>
+          <div class="footer-col">
+            <h4>Resources</h4>
+            <a href="https://pitchmarketing.agency/blog" target="_blank">Blog</a>
+            <a href="https://pitchmarketing.agency/case-studies" target="_blank">Case Studies</a>
+            <a href="tel:+18663371905">Call: 1-866-337-1905</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 Wringo.ai — A <a href="https://pitchmarketing.agency" target="_blank">Pitch Marketing</a> Product</p>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Floating Orb CTA -->
+    <a href="/demo.html" class="floating-orb" title="Talk to Jason">
+      <span class="orb-icon">🎙️</span>
+      <span class="orb-label">Talk to Jason</span>
+    </a>
   </body>
 </html>
