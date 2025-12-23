@@ -57,26 +57,42 @@ router.post("/inbound", async (req, res) => {
     return;
   }
 
-  // Answer incoming calls
+  // Answer incoming calls AND start streaming in one command
   if (eventType === "call.initiated" && payload?.direction === "incoming") {
-    console.log(`[Telnyx] Answering call from ${payload?.from}`);
-    await telnyxCommand(callControlId, 'answer');
+    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
+    const wsUrl = renderUrl.replace('https://', 'wss://') + '/ws/telnyx-media';
+    
+    console.log(`[Telnyx] Answering call from ${payload?.from} with streaming to ${wsUrl}`);
+    
+    // Answer AND start streaming in one command (per Telnyx docs)
+    await telnyxCommand(callControlId, 'answer', {
+      stream_url: wsUrl,
+      stream_track: 'inbound_track',
+      stream_bidirectional_mode: 'rtp',
+      stream_bidirectional_codec: 'PCMU'
+    });
     return;
   }
 
-  // Start media streaming after call is answered
+  // Start media streaming after call is answered (backup if answer didn't include streaming)
   if (eventType === "call.answered") {
+    // Check if streaming already started from answer command
+    if (payload?.stream_url) {
+      console.log(`[Telnyx] Streaming already configured via answer command`);
+      return;
+    }
+    
     const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
     const wsUrl = renderUrl.replace('https://', 'wss://') + '/ws/telnyx-media';
 
     console.log(`[Telnyx] Starting media stream to ${wsUrl}`);
     
-    // Use correct Telnyx streaming API parameters
+    // Telnyx Call Control streaming_start parameters
     await telnyxCommand(callControlId, 'streaming_start', {
       stream_url: wsUrl,
-      stream_track: 'inbound_track', // Start with inbound only (caller's voice)
-      enable_dialogflow: false,
-      client_state: Buffer.from('wringo').toString('base64')
+      stream_track: 'inbound_track',
+      stream_bidirectional_mode: 'rtp',
+      stream_bidirectional_codec: 'PCMU'
     });
     return;
   }
