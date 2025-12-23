@@ -63,12 +63,15 @@ router.post("/inbound", async (req, res) => {
     const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
     const wsUrl = renderUrl.replace('https://', 'wss://') + '/ws/telnyx-media';
     
-    console.log(`[Telnyx] Answering call from ${payload?.from} with streaming to ${wsUrl}`);
+    console.log(`[Telnyx v3.0] Answering call from ${payload?.from} with BIDIRECTIONAL streaming to ${wsUrl}`);
     
-    // Answer AND start streaming in one command (per Telnyx websocket-echo example)
+    // Answer AND start BIDIRECTIONAL streaming (required to send audio back!)
+    // Per Telnyx docs: stream_bidirectional_mode: "rtp" enables sending audio back
     await telnyxCommand(callControlId, 'answer', {
       stream_url: wsUrl,
-      stream_track: 'inbound_track',
+      stream_track: 'both_tracks', // Changed from inbound_track to hear both directions
+      stream_bidirectional_mode: 'rtp', // CRITICAL: enables sending audio back to caller
+      stream_bidirectional_codec: 'PCMU', // G.711 µ-law - same as ElevenLabs ulaw_8000
       preferred_codecs: 'PCMU'
     });
     return;
