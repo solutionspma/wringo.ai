@@ -17,6 +17,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
+// Root route for health probes
+app.get("/", (_req, res) => res.json({ 
+  service: "wringo.ai backend",
+  status: "running",
+  version: "3.1"
+}));
+
 // Health check with service status
 app.get("/health", (_req, res) => res.json({ 
   ok: true,
