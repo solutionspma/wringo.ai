@@ -71,9 +71,12 @@ router.post("/inbound", async (req, res) => {
 
     console.log(`[Telnyx] Starting media stream to ${wsUrl}`);
     
+    // Use correct Telnyx streaming API parameters
     await telnyxCommand(callControlId, 'streaming_start', {
       stream_url: wsUrl,
-      stream_track: 'both_tracks'
+      stream_track: 'inbound_track', // Start with inbound only (caller's voice)
+      enable_dialogflow: false,
+      client_state: Buffer.from('wringo').toString('base64')
     });
     return;
   }
