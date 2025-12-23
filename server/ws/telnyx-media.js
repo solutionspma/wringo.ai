@@ -3,8 +3,21 @@ import { WebSocketServer, WebSocket } from "ws";
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID;
 
+// Log env var status at startup
+console.log("======================================");
+console.log("🎙️ [v5.0] Telnyx-Media Bridge Starting");
+console.log("======================================");
+console.log(`🔑 ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY ? `${ELEVENLABS_API_KEY.substring(0, 8)}...` : '⚠️ NOT SET'}`);
+console.log(`🤖 ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID || '⚠️ NOT SET'}`);
+console.log("======================================");
+
 /**
- * Bridge Telnyx Media Stream to ElevenLabs Conversational AI
+ * Bridge Telnyx Media Stream to ElevenLabs Conversational AI (v5.0)
+ * 
+ * v5.0 CHANGES:
+ * - Added startup logging to verify env vars
+ * - Enhanced error logging for ElevenLabs connection
+ * - Log actual Telnyx event types to debug forwarding
  * 
  * Telnyx Call Control Streaming format:
  * - Messages are JSON with "event" field
@@ -13,12 +26,6 @@ const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID;
  * ElevenLabs Conversational AI expects:
  * - user_audio_chunk: base64 encoded audio (same format as Twilio - mulaw 8kHz)
  * - Responds with audio chunks in ulaw_8000 format
- * 
- * Flow:
- * 1. Telnyx sends audio frames via WebSocket (PCMU 8kHz)
- * 2. We forward audio to ElevenLabs WebSocket (no conversion needed)
- * 3. ElevenLabs responds with AI audio (ulaw_8000)
- * 4. We send AI audio back to Telnyx (no conversion needed)
  */
 export function attachTelnyxMediaWs(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
@@ -38,7 +45,7 @@ export function attachTelnyxMediaWs(httpServer) {
   });
 
   wss.on("connection", async (telnyxWs, req) => {
-    console.log("📡 Telnyx media WS connected");
+    console.log("📡 [v5.0] Telnyx media WS connected");
     console.log(`📡 Request URL: ${req.url}`);
     console.log(`📡 Request headers:`, JSON.stringify(req.headers, null, 2));
     console.log("📡 Waiting for Telnyx stream messages...");
@@ -48,10 +55,23 @@ export function attachTelnyxMediaWs(httpServer) {
     let callControlId = null;
     let isElevenLabsReady = false;
     let messageCount = 0;
+    let audioForwardCount = 0;
+
+    // Check env vars before attempting connection
+    if (!ELEVENLABS_API_KEY) {
+      console.error("❌ ELEVENLABS_API_KEY is not set! Cannot connect to ElevenLabs.");
+      return;
+    }
+    if (!ELEVENLABS_AGENT_ID) {
+      console.error("❌ ELEVENLABS_AGENT_ID is not set! Cannot connect to ElevenLabs.");
+      return;
+    }
 
     // Connect to ElevenLabs Conversational AI WebSocket
     try {
-      console.log("🔗 Getting ElevenLabs signed URL...");
+      console.log("🔗 [v5.0] Getting ElevenLabs signed URL...");
+      console.log(`🔗 Using Agent ID: ${ELEVENLABS_AGENT_ID}`);
+      
       const signedUrlResponse = await fetch(
         `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${ELEVENLABS_AGENT_ID}`,
         {
@@ -59,19 +79,21 @@ export function attachTelnyxMediaWs(httpServer) {
         }
       );
       
+      console.log(`🔗 ElevenLabs API response status: ${signedUrlResponse.status}`);
+      
       if (!signedUrlResponse.ok) {
         const errText = await signedUrlResponse.text();
-        console.error("Failed to get ElevenLabs signed URL:", errText);
+        console.error("❌ Failed to get ElevenLabs signed URL:", errText);
         return;
       }
       
       const { signed_url } = await signedUrlResponse.json();
-      console.log("🔗 Got signed URL, connecting to ElevenLabs...");
+      console.log("✅ [v5.0] Got signed URL, connecting to ElevenLabs WebSocket...");
       
       elevenLabsWs = new WebSocket(signed_url);
 
       elevenLabsWs.on("open", () => {
-        console.log("🎙️ [v3.0] Connected to ElevenLabs Conversational AI");
+        console.log("🎙️ [v5.0] Connected to ElevenLabs Conversational AI ✅");
         isElevenLabsReady = true;
         
         // Send initial configuration to ElevenLabs
@@ -91,7 +113,12 @@ export function attachTelnyxMediaWs(httpServer) {
             }
           }
         }));
-        console.log("🎙️ [v3.0] Sent ElevenLabs config with ulaw_8000 output format");
+        console.log("🎙️ [v5.0] Sent ElevenLabs config with ulaw_8000 output format");
+      });
+      
+      elevenLabsWs.on("error", (err) => {
+        console.error("❌ [v5.0] ElevenLabs WebSocket error:", err.message);
+        isElevenLabsReady = false;
       });
 
       elevenLabsWs.on("message", (data) => {
@@ -182,9 +209,9 @@ export function attachTelnyxMediaWs(httpServer) {
         // Log EVERY message for debugging
         const rawStr = data.toString("utf8");
         
-        // Log first 10 messages in detail
+        // Log first 10 messages in FULL detail for v5.0
         if (messageCount <= 10) {
-          console.log(`📨 Telnyx msg #${messageCount}:`, rawStr.substring(0, 500));
+          console.log(`📨 [v5.0] Telnyx msg #${messageCount}:`, rawStr.substring(0, 500));
         } else if (messageCount % 100 === 0) {
           console.log(`📨 Telnyx msg #${messageCount} (periodic log)`);
         }
@@ -193,6 +220,11 @@ export function attachTelnyxMediaWs(httpServer) {
 
         // Telnyx Call Control streaming message types
         const eventType = msg.event || msg.type || msg.event_type;
+        
+        // Log the event type for EVERY message in first 10
+        if (messageCount <= 10) {
+          console.log(`🏷️  Event type detected: "${eventType}" | isElevenLabsReady: ${isElevenLabsReady}`);
+        }
         
         // Handle stream start/connected
         if (eventType === "start" || eventType === "connected" || eventType === "stream.started") {
@@ -206,15 +238,25 @@ export function attachTelnyxMediaWs(httpServer) {
         if (eventType === "media") {
           const audioPayload = msg.media?.payload || msg.payload;
           
+          // Log forwarding attempt on first few messages
+          if (messageCount <= 10) {
+            console.log(`🎵 Media event - payload: ${audioPayload ? `${audioPayload.length} chars` : 'NONE'}, elevenLabsWs: ${!!elevenLabsWs}, ready: ${isElevenLabsReady}`);
+          }
+          
           if (audioPayload && elevenLabsWs && isElevenLabsReady) {
             // Forward caller audio to ElevenLabs
             elevenLabsWs.send(JSON.stringify({
               user_audio_chunk: audioPayload
             }));
+            audioForwardCount++;
             
             // Log occasionally
-            if (messageCount <= 10 || messageCount % 500 === 0) {
-              console.log(`🔊 Forwarded audio chunk #${messageCount} to ElevenLabs`);
+            if (audioForwardCount <= 10 || audioForwardCount % 500 === 0) {
+              console.log(`🔊 [v5.0] Forwarded audio chunk #${audioForwardCount} to ElevenLabs`);
+            }
+          } else if (audioPayload && messageCount <= 10) {
+            console.log(`⚠️  Not forwarding: elevenLabsWs=${!!elevenLabsWs}, ready=${isElevenLabsReady}`);
+          }
             }
           }
         }
