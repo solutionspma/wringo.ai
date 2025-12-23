@@ -2,6 +2,41 @@ import express from "express";
 
 const router = express.Router();
 
+const TELNYX_API_KEY = process.env.TELNYX_API_KEY;
+
+/**
+ * Make a Telnyx Call Control API request
+ */
+async function telnyxCommand(callControlId, command, params = {}) {
+  const url = `https://api.telnyx.com/v2/calls/${callControlId}/actions/${command}`;
+  
+  console.log(`[Telnyx API] ${command} -> ${callControlId}`);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${TELNYX_API_KEY}`
+      },
+      body: JSON.stringify(params)
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`[Telnyx API] Error: ${response.status} - ${error}`);
+      return { success: false, error };
+    }
+    
+    const data = await response.json();
+    console.log(`[Telnyx API] ${command} success`);
+    return { success: true, data };
+  } catch (err) {
+    console.error(`[Telnyx API] ${command} failed:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 /**
  * Telnyx Inbound Call Webhook
  * 
@@ -15,52 +50,32 @@ router.post("/inbound", async (req, res) => {
 
   console.log(`[Telnyx] Event: ${eventType}`, payload?.from ? `From: ${payload.from}` : '');
 
-  if (!eventType) {
-    return res.sendStatus(200);
+  // Always respond 200 quickly to acknowledge webhook
+  res.sendStatus(200);
+
+  if (!eventType || !callControlId) {
+    return;
   }
 
   // Answer incoming calls
-  if (eventType === "call.initiated" && callControlId) {
+  if (eventType === "call.initiated" && payload?.direction === "incoming") {
     console.log(`[Telnyx] Answering call from ${payload?.from}`);
-    return res.json({
-      data: {
-        commands: [{ command: "answer", call_control_id: callControlId }],
-      },
-    });
+    await telnyxCommand(callControlId, 'answer');
+    return;
   }
 
   // Start media streaming after call is answered
-  if (eventType === "call.answered" && callControlId) {
-    // Use Render's WebSocket URL or construct from environment
-    const renderUrl = process.env.RENDER_EXTERNAL_URL || process.env.TELNYX_MEDIA_WS_URL;
-    
-    let wsUrl;
-    if (renderUrl) {
-      // Convert https:// to wss:// 
-      wsUrl = renderUrl.replace('https://', 'wss://').replace('http://', 'ws://');
-      if (!wsUrl.includes('/ws/telnyx-media')) {
-        wsUrl = `${wsUrl}/ws/telnyx-media`;
-      }
-    } else {
-      // Fallback - this won't work but at least shows in logs
-      wsUrl = 'wss://wringo-backend.onrender.com/ws/telnyx-media';
-    }
+  if (eventType === "call.answered") {
+    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
+    const wsUrl = renderUrl.replace('https://', 'wss://') + '/ws/telnyx-media';
 
     console.log(`[Telnyx] Starting media stream to ${wsUrl}`);
     
-    return res.json({
-      data: {
-        commands: [
-          {
-            command: "start_stream",
-            call_control_id: callControlId,
-            stream_url: wsUrl,
-            stream_track: "both_tracks", // Send both inbound and outbound audio
-            enable_dialogflow: false
-          },
-        ],
-      },
+    await telnyxCommand(callControlId, 'streaming_start', {
+      stream_url: wsUrl,
+      stream_track: 'both_tracks'
     });
+    return;
   }
 
   // Handle call hangup
@@ -73,12 +88,10 @@ router.post("/inbound", async (req, res) => {
     console.log(`[Telnyx] Media streaming started`);
   }
 
-  // Handle streaming stopped
+  // Handle streaming stopped  
   if (eventType === "streaming.stopped") {
     console.log(`[Telnyx] Media streaming stopped`);
   }
-
-  return res.sendStatus(200);
 });
 
 /**
@@ -86,14 +99,13 @@ router.post("/inbound", async (req, res) => {
  * Check Telnyx configuration status
  */
 router.get("/status", (req, res) => {
-  const renderUrl = process.env.RENDER_EXTERNAL_URL;
-  const wsUrl = process.env.TELNYX_MEDIA_WS_URL;
+  const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
   
   res.json({
-    configured: Boolean(process.env.TELNYX_API_KEY),
-    webhookUrl: `${renderUrl || 'https://wringo-backend.onrender.com'}/api/telnyx/inbound`,
-    mediaWsUrl: wsUrl || `${renderUrl?.replace('https://', 'wss://') || 'wss://wringo-backend.onrender.com'}/ws/telnyx-media`,
-    hasApiKey: Boolean(process.env.TELNYX_API_KEY)
+    configured: Boolean(TELNYX_API_KEY),
+    webhookUrl: `${renderUrl}/api/telnyx/inbound`,
+    mediaWsUrl: `${renderUrl.replace('https://', 'wss://')}/ws/telnyx-media`,
+    hasApiKey: Boolean(TELNYX_API_KEY)
   });
 });
 
