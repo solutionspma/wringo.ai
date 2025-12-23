@@ -49,7 +49,7 @@ router.post("/inbound", async (req, res) => {
   const callControlId = payload?.call_control_id;
 
   console.log(`[Telnyx] Event: ${eventType}`, payload?.from ? `From: ${payload.from}` : '');
-  console.log(`[Telnyx v3.1] Processing webhook - BIDIRECTIONAL MODE`); // Version marker
+  console.log(`[Telnyx v4.0] Two-step answer then stream`); // Version marker
 
   // Always respond 200 quickly to acknowledge webhook
   res.sendStatus(200);
@@ -58,28 +58,29 @@ router.post("/inbound", async (req, res) => {
     return;
   }
 
-  // Answer incoming calls AND start streaming in one command
+  // Answer incoming calls FIRST, then start streaming separately
   if (eventType === "call.initiated" && payload?.direction === "incoming") {
-    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
-    const wsUrl = renderUrl.replace('https://', 'wss://') + '/ws/telnyx-media';
+    console.log(`[Telnyx v4.0] Answering call from ${payload?.from}`);
     
-    console.log(`[Telnyx v3.0] Answering call from ${payload?.from} with BIDIRECTIONAL streaming to ${wsUrl}`);
-    
-    // Answer AND start BIDIRECTIONAL streaming (required to send audio back!)
-    // Per Telnyx docs: stream_bidirectional_mode: "rtp" enables sending audio back
+    // Step 1: Just answer the call
     await telnyxCommand(callControlId, 'answer', {
-      stream_url: wsUrl,
-      stream_track: 'both_tracks', // Changed from inbound_track to hear both directions
-      stream_bidirectional_mode: 'rtp', // CRITICAL: enables sending audio back to caller
-      stream_bidirectional_codec: 'PCMU', // G.711 µ-law - same as ElevenLabs ulaw_8000
       preferred_codecs: 'PCMU'
     });
     return;
   }
 
-  // Call answered - streaming should already be configured
+  // Call answered - NOW start streaming as separate step
   if (eventType === "call.answered") {
-    console.log(`[Telnyx] Call answered, streaming should be active`);
+    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
+    const wsUrl = renderUrl.replace('https://', 'wss://') + '/ws/telnyx-media';
+    
+    console.log(`[Telnyx v4.0] Call answered, starting media stream to ${wsUrl}`);
+    
+    // Step 2: Start streaming AFTER call is answered (like the Telnyx demos do)
+    await telnyxCommand(callControlId, 'streaming_start', {
+      stream_url: wsUrl,
+      stream_track: 'inbound_track'
+    });
     return;
   }
 
