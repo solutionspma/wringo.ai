@@ -1,0 +1,17 @@
+[build]
+  publish = "client"
+  # No build command needed for plain HTML/JS/CSS
+
+# Proxy /api/* to your backend (Railway, Render, etc.)
+# Update BACKEND_URL after you deploy the backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://YOUR_BACKEND_URL/api/:splat"
+  status = 200
+  force = true
+
+# SPA fallback (if you add client-side routing later)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
