@@ -64,36 +64,18 @@ router.post("/inbound", async (req, res) => {
     
     console.log(`[Telnyx] Answering call from ${payload?.from} with streaming to ${wsUrl}`);
     
-    // Answer AND start streaming in one command (per Telnyx docs)
+    // Answer AND start streaming in one command (per Telnyx websocket-echo example)
     await telnyxCommand(callControlId, 'answer', {
       stream_url: wsUrl,
       stream_track: 'inbound_track',
-      stream_bidirectional_mode: 'rtp',
-      stream_bidirectional_codec: 'PCMU'
+      preferred_codecs: 'PCMU'
     });
     return;
   }
 
-  // Start media streaming after call is answered (backup if answer didn't include streaming)
+  // Call answered - streaming should already be configured
   if (eventType === "call.answered") {
-    // Check if streaming already started from answer command
-    if (payload?.stream_url) {
-      console.log(`[Telnyx] Streaming already configured via answer command`);
-      return;
-    }
-    
-    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://wringo-backend.onrender.com';
-    const wsUrl = renderUrl.replace('https://', 'wss://') + '/ws/telnyx-media';
-
-    console.log(`[Telnyx] Starting media stream to ${wsUrl}`);
-    
-    // Telnyx Call Control streaming_start parameters
-    await telnyxCommand(callControlId, 'streaming_start', {
-      stream_url: wsUrl,
-      stream_track: 'inbound_track',
-      stream_bidirectional_mode: 'rtp',
-      stream_bidirectional_codec: 'PCMU'
-    });
+    console.log(`[Telnyx] Call answered, streaming should be active`);
     return;
   }
 
