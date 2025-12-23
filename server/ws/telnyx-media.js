@@ -21,17 +21,22 @@ export function attachTelnyxMediaWs(httpServer) {
 
   httpServer.on("upgrade", (req, socket, head) => {
     const { url = "" } = req;
+    console.log(`🔌 WebSocket upgrade request for: ${url}`);
     if (url.startsWith("/ws/telnyx-media")) {
       wss.handleUpgrade(req, socket, head, (ws) => {
+        console.log(`✅ WebSocket upgrade completed`);
         wss.emit("connection", ws, req);
       });
       return;
     }
+    console.log(`❌ WebSocket upgrade rejected - unknown path: ${url}`);
     socket.destroy();
   });
 
-  wss.on("connection", async (telnyxWs) => {
+  wss.on("connection", async (telnyxWs, req) => {
     console.log("📡 Telnyx media WS connected");
+    console.log(`📡 Request URL: ${req.url}`);
+    console.log(`📡 Request headers:`, JSON.stringify(req.headers, null, 2));
     console.log("📡 Waiting for Telnyx stream messages...");
     
     let elevenLabsWs = null;
@@ -149,15 +154,29 @@ export function attachTelnyxMediaWs(httpServer) {
     }
 
     // Handle Telnyx media stream messages
-    telnyxWs.on("message", (data) => {
+    telnyxWs.on("message", (data, isBinary) => {
       messageCount++;
       
+      console.log(`📨 Telnyx msg #${messageCount} - isBinary: ${isBinary}, type: ${typeof data}, length: ${data?.length || 0}`);
+      
       try {
+        // Handle binary data
+        if (isBinary || Buffer.isBuffer(data)) {
+          console.log(`📨 Binary message #${messageCount}: ${data.length} bytes`);
+          // Binary audio data - forward to ElevenLabs
+          if (elevenLabsWs && isElevenLabsReady) {
+            elevenLabsWs.send(JSON.stringify({
+              user_audio_chunk: data.toString('base64')
+            }));
+          }
+          return;
+        }
+        
         // Log EVERY message for debugging
         const rawStr = data.toString("utf8");
         
-        // Log first 5 messages in detail
-        if (messageCount <= 5) {
+        // Log first 10 messages in detail
+        if (messageCount <= 10) {
           console.log(`📨 Telnyx msg #${messageCount}:`, rawStr.substring(0, 500));
         } else if (messageCount % 100 === 0) {
           console.log(`📨 Telnyx msg #${messageCount} (periodic log)`);
@@ -218,8 +237,13 @@ export function attachTelnyxMediaWs(httpServer) {
     });
 
     telnyxWs.on("close", (code, reason) => {
-      console.log(`📴 Telnyx media WS disconnected (code: ${code}, reason: ${reason})`);
-      console.log(`📊 Total messages received: ${messageCount}`);
+      console.log(`📴 Telnyx media WS disconnected (code: ${code}, reason: ${reason?.toString() || 'none'})`);
+      console.log(`📊 Total messages received from Telnyx: ${messageCount}`);
+      if (messageCount === 0) {
+        console.log(`⚠️  WARNING: No messages received from Telnyx! This suggests:`);
+        console.log(`   1. WebSocket upgrade succeeded but Telnyx never sent data`);
+        console.log(`   2. Possibly a Render proxy issue or Telnyx config issue`);
+      }
       if (elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
         elevenLabsWs.close();
       }
@@ -227,6 +251,16 @@ export function attachTelnyxMediaWs(httpServer) {
 
     telnyxWs.on("error", (err) => {
       console.error("Telnyx WS error:", err.message);
+    });
+    
+    // Handle ping/pong for keep-alive
+    telnyxWs.on("ping", (data) => {
+      console.log("📡 Received ping from Telnyx");
+      telnyxWs.pong(data);
+    });
+    
+    telnyxWs.on("pong", () => {
+      console.log("📡 Received pong from Telnyx");
     });
   });
 
