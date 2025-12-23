@@ -5,7 +5,10 @@ import dotenv from "dotenv";
 
 import elevenlabsRoutes from "./routes/elevenlabs.js";
 import telnyxRoutes from "./routes/telnyx.js";
+import webhooksRoutes from "./routes/webhooks.js";
+import leadsRoutes from "./routes/leads.js";
 import { attachTelnyxMediaWs } from "./ws/telnyx-media.js";
+import modcrm from "./services/modcrm.js";
 
 dotenv.config({ quiet: true });
 
@@ -13,18 +16,37 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
-app.get("/health", (_req, res) => res.json({ ok: true }));
+// Health check with service status
+app.get("/health", (_req, res) => res.json({ 
+  ok: true,
+  services: {
+    modcrm: modcrm.getStatus()
+  }
+}));
 
+// API Routes
 app.use("/api/elevenlabs", elevenlabsRoutes);
 app.use("/api/telnyx", telnyxRoutes);
+app.use("/api/webhooks", webhooksRoutes);
+app.use("/api/leads", leadsRoutes);
+
+// modCRM status endpoint
+app.get("/api/modcrm/status", (_req, res) => {
+  res.json(modcrm.getStatus());
+});
 
 const server = http.createServer(app);
 attachTelnyxMediaWs(server);
 
 const PORT = Number(process.env.PORT || 3001);
 server.listen(PORT, () => {
-  console.log(`wringo.ai backend listening on http://localhost:${PORT}`);
-  console.log(`- ElevenLabs signer: http://localhost:${PORT}/api/elevenlabs/signed-url`);
-  console.log(`- Telnyx inbound:     http://localhost:${PORT}/api/telnyx/inbound`);
-  console.log(`- Telnyx media WS:    ws://localhost:${PORT}/ws/telnyx-media`);
+  console.log(`\n🚀 wringo.ai backend listening on http://localhost:${PORT}\n`);
+  console.log(`📡 API Endpoints:`);
+  console.log(`   - ElevenLabs signer: GET  /api/elevenlabs/signed-url`);
+  console.log(`   - Telnyx inbound:    POST /api/telnyx/inbound`);
+  console.log(`   - Webhooks:          POST /api/webhooks/elevenlabs`);
+  console.log(`   - Leads API:         POST /api/leads`);
+  console.log(`   - modCRM status:     GET  /api/modcrm/status`);
+  console.log(`   - WebSocket:         WS   /ws/telnyx-media`);
+  console.log(`\n🔗 modCRM: ${modcrm.isConfigured() ? "✅ Configured" : "⚠️  Not configured (set MODCRM_API_URL & MODCRM_API_KEY)"}`);
 });
