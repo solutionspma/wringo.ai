@@ -36,8 +36,9 @@ async function startConversation() {
 
   setStatus("Connecting…");
 
-  conversation = new Conversation({
-    url: signedUrl,
+  // Use the static startSession method per ElevenLabs SDK
+  conversation = await Conversation.startSession({
+    signedUrl: signedUrl,
     onConnect: () => {
       log("Connected");
       setStatus("Listening…");
@@ -57,16 +58,14 @@ async function startConversation() {
       started = false;
     },
     onMessage: (msg) => {
-      // msg shape depends on the SDK; logging raw is safest.
       log(`Agent message: ${JSON.stringify(msg)}`);
+    },
+    onModeChange: (mode) => {
+      const speaking = mode.mode === "speaking";
+      setStatus(speaking ? "Jason is speaking…" : "Listening…", { speaking });
     },
   });
 
-  conversation.on("isSpeaking", (speaking) => {
-    setStatus(speaking ? "Jason is speaking…" : "Listening…", { speaking });
-  });
-
-  await conversation.startSession();
   started = true;
 }
 
