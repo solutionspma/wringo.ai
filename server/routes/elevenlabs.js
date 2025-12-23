@@ -16,14 +16,12 @@ router.get("/signed-url", async (_req, res) => {
     }
 
     const response = await fetch(
-      "https://api.elevenlabs.io/v1/conversation/get_signed_url",
+      `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "xi-api-key": apiKey,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ agent_id: agentId }),
       }
     );
 
