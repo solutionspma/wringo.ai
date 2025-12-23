@@ -20,6 +20,7 @@ app.use(express.json({ limit: "2mb" }));
 // Health check with service status
 app.get("/health", (_req, res) => res.json({ 
   ok: true,
+  version: "3.1-bidirectional", // Version marker for deployment verification
   services: {
     modcrm: modcrm.getStatus()
   }
