@@ -49,7 +49,7 @@ router.post("/inbound", async (req, res) => {
   const callControlId = payload?.call_control_id;
 
   console.log(`[Telnyx] Event: ${eventType}`, payload?.from ? `From: ${payload.from}` : '');
-  console.log(`[Telnyx v2.1] Processing webhook...`); // Version marker
+  console.log(`[Telnyx v3.1] Processing webhook - BIDIRECTIONAL MODE`); // Version marker
 
   // Always respond 200 quickly to acknowledge webhook
   res.sendStatus(200);
