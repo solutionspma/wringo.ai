@@ -24,7 +24,7 @@ async function startConversation() {
   await navigator.mediaDevices.getUserMedia({ audio: true });
 
   setStatus("Fetching signed URL…");
-  const res = await fetch("http://localhost:3001/api/elevenlabs/signed-url");
+  const res = await fetch("/api/elevenlabs/signed-url");
   const data = await res.json();
 
   if (!res.ok) {
