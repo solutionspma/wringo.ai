@@ -13,9 +13,9 @@ import { createClient } from "@supabase/supabase-js";
 
 const router = Router();
 
-// Supabase client for leads + referrals tables
-const SUPABASE_URL = process.env.MODCRM_SUPABASE_URL || 'https://jchwuzfsztaxeautzprz.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.MODCRM_SUPABASE_SERVICE_KEY;
+// Wringo.ai dedicated Supabase project for leads + referrals
+const SUPABASE_URL = process.env.WRINGO_SUPABASE_URL || 'https://wncmxyswxqmmzrhcrnnh.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.WRINGO_SUPABASE_SERVICE_KEY;
 
 let supabase = null;
 

@@ -373,12 +373,12 @@ curl https://wringo-backend.onrender.com/api/referrals/stats
 ## Environment Variables (Render)
 
 ```bash
-# Supabase (for leads + referrals tables)
-MODCRM_SUPABASE_URL=https://jchwuzfsztaxeautzprz.supabase.co
-MODCRM_SUPABASE_SERVICE_KEY=your-service-key
+# Wringo.ai Supabase (for leads + referrals tables)
+WRINGO_SUPABASE_URL=https://wncmxyswxqmmzrhcrnnh.supabase.co
+WRINGO_SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduY214eXN3eHFtbXpyaGNybm5oIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjUxMzM2NSwiZXhwIjoyMDgyMDg5MzY1fQ.WI0OuW30lIbeLL5PXslBhrsarLBiK-YcOTbimzMfwJs
 
-# Container ID for modCRM
-MODCRM_CONTAINER_ID=wringo-voice-agent
+# Container ID for tracking
+WRINGO_CONTAINER_ID=wringo-voice-agent
 
 # ElevenLabs
 ELEVENLABS_API_KEY=your-api-key

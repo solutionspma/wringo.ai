@@ -51,5 +51,5 @@ server.listen(PORT, () => {
   console.log(`   - Referrals API:     POST /api/referrals/capture`);
   console.log(`   - modCRM status:     GET  /api/modcrm/status`);
   console.log(`   - WebSocket:         WS   /ws/telnyx-media`);
-  console.log(`\n🔗 modCRM: ${modcrm.isConfigured() ? "✅ Configured" : "⚠️  Not configured (set MODCRM_SUPABASE_URL & MODCRM_SUPABASE_SERVICE_KEY)"}`);
+  console.log(`\n🔗 Supabase: ${modcrm.isConfigured() ? "✅ Configured" : "⚠️  Not configured (set WRINGO_SUPABASE_URL & WRINGO_SUPABASE_SERVICE_KEY)"}`);
 });
