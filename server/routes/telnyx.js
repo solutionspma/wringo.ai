@@ -76,10 +76,14 @@ router.post("/inbound", async (req, res) => {
     
     console.log(`[Telnyx v4.0] Call answered, starting media stream to ${wsUrl}`);
     
-    // Step 2: Start streaming AFTER call is answered (like the Telnyx demos do)
+    // Step 2: Start streaming AFTER call is answered
+    // stream_bidirectional_mode: "rtp" enables sending raw audio back to the call
+    // stream_bidirectional_codec: "PCMU" ensures we send/receive μ-law
     await telnyxCommand(callControlId, 'streaming_start', {
       stream_url: wsUrl,
-      stream_track: 'inbound_track'
+      stream_track: 'inbound_track',
+      stream_bidirectional_mode: 'rtp',
+      stream_bidirectional_codec: 'PCMU'
     });
     return;
   }
