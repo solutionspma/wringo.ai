@@ -6,7 +6,7 @@ const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID;
 
 // Log env var status at startup
 console.log("==========================================");
-console.log("🎙️ [v6.1] Telnyx-Media Bridge with Audio Conversion");
+console.log("🎙️ [v6.2] Telnyx-Media Bridge with Audio Conversion");
 console.log("==========================================");
 console.log(`🔑 ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY ? `${ELEVENLABS_API_KEY.substring(0, 8)}...` : '⚠️ NOT SET'}`);
 console.log(`🤖 ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID || '⚠️ NOT SET'}`);
@@ -33,10 +33,10 @@ export function attachTelnyxMediaWs(httpServer) {
 
   httpServer.on("upgrade", (req, socket, head) => {
     const { url = "" } = req;
-    console.log(`🔌 [v6.1] WebSocket upgrade request for: ${url}`);
+    console.log(`🔌 [v6.2] WebSocket upgrade request for: ${url}`);
     if (url.startsWith("/ws/telnyx-media")) {
       wss.handleUpgrade(req, socket, head, (ws) => {
-        console.log(`✅ [v6.1] WebSocket upgrade completed`);
+        console.log(`✅ [v6.2] WebSocket upgrade completed`);
         wss.emit("connection", ws, req);
       });
       return;
@@ -46,7 +46,7 @@ export function attachTelnyxMediaWs(httpServer) {
   });
 
   wss.on("connection", async (telnyxWs, req) => {
-    console.log("📡 [v6.1] Telnyx media WS connected");
+    console.log("📡 [v6.2] Telnyx media WS connected");
     console.log(`📡 Request URL: ${req.url}`);
     
     let elevenLabsWs = null;
@@ -69,7 +69,7 @@ export function attachTelnyxMediaWs(httpServer) {
 
     // Connect to ElevenLabs Conversational AI WebSocket
     try {
-      console.log("🔗 [v6.1] Getting ElevenLabs signed URL...");
+      console.log("🔗 [v6.2] Getting ElevenLabs signed URL...");
       console.log(`🔗 Using Agent ID: ${ELEVENLABS_AGENT_ID}`);
       
       const signedUrlResponse = await fetch(
@@ -88,13 +88,13 @@ export function attachTelnyxMediaWs(httpServer) {
       }
       
       const { signed_url } = await signedUrlResponse.json();
-      console.log("✅ [v6.1] Got signed URL, connecting to ElevenLabs WebSocket...");
+      console.log("✅ [v6.2] Got signed URL, connecting to ElevenLabs WebSocket...");
       
       elevenLabsWs = new WebSocket(signed_url);
 
       elevenLabsWs.on("open", () => {
-        console.log("🎙️ [v6.1] Connected to ElevenLabs Conversational AI ✅");
-        isElevenLabsReady = true;
+        console.log("🎙️ [v6.2] Connected to ElevenLabs Conversational AI ✅");
+        // DON'T set isElevenLabsReady yet - wait for metadata response!
         
         // CRITICAL: Tell ElevenLabs the audio formats FIRST before any config
         // Per ElevenLabs docs, this must be sent immediately on connection
@@ -112,19 +112,7 @@ export function attachTelnyxMediaWs(httpServer) {
             }
           }
         }));
-        console.log("🎙️ [v6.1] Sent ElevenLabs config with pcm_16000 output format");
-        
-        // Flush any buffered audio
-        if (audioBuffer.length > 0) {
-          console.log(`🎵 [v6.1] Flushing ${audioBuffer.length} buffered audio chunks`);
-          for (const pcmBase64 of audioBuffer) {
-            elevenLabsWs.send(JSON.stringify({
-              user_audio_chunk: pcmBase64
-            }));
-            audioForwardCount++;
-          }
-          audioBuffer = [];
-        }
+        console.log("🎙️ [v6.2] Sent ElevenLabs config - waiting for metadata confirmation...");
       });
       
       elevenLabsWs.on("error", (err) => {
@@ -142,9 +130,25 @@ export function attachTelnyxMediaWs(httpServer) {
         try {
           const msg = JSON.parse(data.toString());
           
-          // Handle conversation metadata
+          // Handle conversation metadata - NOW we're ready to send audio!
           if (msg.type === "conversation_initiation_metadata") {
-            console.log("📋 [v6.1] ElevenLabs conversation started:", JSON.stringify(msg.conversation_initiation_metadata_event || msg));
+            console.log("📋 [v6.2] ElevenLabs conversation confirmed:", JSON.stringify(msg.conversation_initiation_metadata_event || msg));
+            
+            // NOW we're ready to receive/send audio
+            isElevenLabsReady = true;
+            console.log("✅ [v6.2] ElevenLabs ready - now accepting audio");
+            
+            // Flush any buffered audio
+            if (audioBuffer.length > 0) {
+              console.log(`🎵 [v6.2] Flushing ${audioBuffer.length} buffered audio chunks`);
+              for (const pcmBase64 of audioBuffer) {
+                elevenLabsWs.send(JSON.stringify({
+                  user_audio_chunk: pcmBase64
+                }));
+                audioForwardCount++;
+              }
+              audioBuffer = [];
+            }
             return;
           }
           
@@ -169,7 +173,7 @@ export function attachTelnyxMediaWs(httpServer) {
               }));
               
               if (audioReturnCount <= 5 || audioReturnCount % 50 === 0) {
-                console.log(`🔊 [v6.1] Sent audio #${audioReturnCount} to Telnyx (${pcmBuffer.length}→${ulawBuffer.length} bytes)`);
+                console.log(`🔊 [v6.2] Sent audio #${audioReturnCount} to Telnyx (${pcmBuffer.length}→${ulawBuffer.length} bytes)`);
               }
             }
             return;
@@ -221,7 +225,7 @@ export function attachTelnyxMediaWs(httpServer) {
         
         // Log first few messages
         if (messageCount <= 5) {
-          console.log(`📨 [v6.1] Telnyx msg #${messageCount}: event="${eventType}", ready=${isElevenLabsReady}`);
+          console.log(`📨 [v6.2] Telnyx msg #${messageCount}: event="${eventType}", ready=${isElevenLabsReady}`);
         } else if (messageCount % 100 === 0) {
           console.log(`📨 Telnyx msg #${messageCount} (event: ${eventType})`);
         }
@@ -229,7 +233,7 @@ export function attachTelnyxMediaWs(httpServer) {
         // Handle stream start
         if (eventType === "start" || eventType === "connected") {
           streamId = msg.stream_id;
-          console.log(`📞 [v6.1] Telnyx stream STARTED - ID: ${streamId}`);
+          console.log(`📞 [v6.2] Telnyx stream STARTED - ID: ${streamId}`);
           console.log(`📞 Media format:`, JSON.stringify(msg.start?.media_format || 'not specified'));
           return;
         }
@@ -237,7 +241,7 @@ export function attachTelnyxMediaWs(httpServer) {
         // Capture stream_id from any message if we don't have it
         if (!streamId && msg.stream_id) {
           streamId = msg.stream_id;
-          console.log(`📞 [v6.1] Captured stream_id: ${streamId}`);
+          console.log(`📞 [v6.2] Captured stream_id: ${streamId}`);
         }
         
         // Handle media (audio) from caller
@@ -269,7 +273,7 @@ export function attachTelnyxMediaWs(httpServer) {
           
           audioForwardCount++;
           if (audioForwardCount <= 5 || audioForwardCount % 100 === 0) {
-            console.log(`🎵 [v6.1] Forwarded audio #${audioForwardCount} to ElevenLabs (${ulawBuffer.length}→${pcmBuffer.length} bytes)`);
+            console.log(`🎵 [v6.2] Forwarded audio #${audioForwardCount} to ElevenLabs (${ulawBuffer.length}→${pcmBuffer.length} bytes)`);
           }
           return;
         }
@@ -306,5 +310,5 @@ export function attachTelnyxMediaWs(httpServer) {
     });
   });
 
-  console.log("🎧 [v6.1] Telnyx Media WebSocket handler attached with audio conversion");
+  console.log("🎧 [v6.2] Telnyx Media WebSocket handler attached with audio conversion");
 }
