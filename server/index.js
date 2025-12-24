@@ -27,7 +27,7 @@ app.get("/", (_req, res) => res.json({
 // Health check with service status
 app.get("/health", (_req, res) => res.json({ 
   ok: true,
-  version: "6.0-audio-conversion", // Version marker for deployment verification
+  version: "6.3-buffered-audio", // Version marker for deployment verification
   services: {
     modcrm: modcrm.getStatus()
   }

@@ -4,39 +4,46 @@ import { ulawToPcm16k, pcm16kToUlaw } from "../audio/convert.js";
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID;
 
+// ElevenLabs recommended chunk size: 4000 samples @ 16kHz = 250ms = 8000 bytes (16-bit)
+// Telnyx sends 160 bytes μ-law (20ms) → converts to 640 bytes PCM
+// We need to buffer ~12-13 Telnyx chunks to hit 8000 bytes
+const ELEVENLABS_CHUNK_SIZE = 8000; // bytes (4000 samples * 2 bytes per sample)
+
 // Log env var status at startup
 console.log("==========================================");
-console.log("🎙️ [v6.2] Telnyx-Media Bridge with Audio Conversion");
+console.log("🎙️ [v6.3] Telnyx-Media Bridge - Buffered Audio");
 console.log("==========================================");
 console.log(`🔑 ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY ? `${ELEVENLABS_API_KEY.substring(0, 8)}...` : '⚠️ NOT SET'}`);
 console.log(`🤖 ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID || '⚠️ NOT SET'}`);
+console.log(`📦 Audio chunk size: ${ELEVENLABS_CHUNK_SIZE} bytes (250ms)`);
 console.log("==========================================");
 
 /**
- * Bridge Telnyx Media Stream to ElevenLabs Conversational AI (v6.0)
+ * Bridge Telnyx Media Stream to ElevenLabs Conversational AI (v6.3)
  * 
- * v6.0: PROPER AUDIO CONVERSION
- * - Telnyx sends: μ-law (G.711 PCMU) 8kHz mono
- * - ElevenLabs expects: PCM 16-bit 16kHz mono
- * - We now convert between formats properly!
+ * v6.3: BUFFERED AUDIO CHUNKS
+ * - ElevenLabs recommends 4000 samples (250ms) per chunk
+ * - Telnyx sends 160 bytes (20ms) per chunk
+ * - We buffer PCM until we have 8000 bytes, then send
  * 
  * Flow:
  * 1. Telnyx sends μ-law 8kHz audio via WebSocket
  * 2. We convert μ-law 8kHz → PCM 16kHz
- * 3. Forward PCM to ElevenLabs
- * 4. ElevenLabs responds with PCM 16kHz
- * 5. We convert PCM 16kHz → μ-law 8kHz
- * 6. Send back to Telnyx
+ * 3. Buffer PCM until we have 8000 bytes (250ms)
+ * 4. Forward buffered PCM to ElevenLabs
+ * 5. ElevenLabs responds with PCM 16kHz
+ * 6. We convert PCM 16kHz → μ-law 8kHz
+ * 7. Send back to Telnyx
  */
 export function attachTelnyxMediaWs(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on("upgrade", (req, socket, head) => {
     const { url = "" } = req;
-    console.log(`🔌 [v6.2] WebSocket upgrade request for: ${url}`);
+    console.log(`🔌 [v6.3] WebSocket upgrade request for: ${url}`);
     if (url.startsWith("/ws/telnyx-media")) {
       wss.handleUpgrade(req, socket, head, (ws) => {
-        console.log(`✅ [v6.2] WebSocket upgrade completed`);
+        console.log(`✅ [v6.3] WebSocket upgrade completed`);
         wss.emit("connection", ws, req);
       });
       return;
@@ -46,7 +53,7 @@ export function attachTelnyxMediaWs(httpServer) {
   });
 
   wss.on("connection", async (telnyxWs, req) => {
-    console.log("📡 [v6.2] Telnyx media WS connected");
+    console.log("📡 [v6.3] Telnyx media WS connected");
     console.log(`📡 Request URL: ${req.url}`);
     
     let elevenLabsWs = null;
@@ -55,7 +62,8 @@ export function attachTelnyxMediaWs(httpServer) {
     let messageCount = 0;
     let audioForwardCount = 0;
     let audioReturnCount = 0;
-    let audioBuffer = []; // Buffer audio until ElevenLabs is ready
+    let pcmBuffer = Buffer.alloc(0); // Buffer for accumulating PCM audio
+    let pendingAudioChunks = []; // Buffer audio chunks until ElevenLabs is ready
 
     // Check env vars before attempting connection
     if (!ELEVENLABS_API_KEY) {
@@ -67,9 +75,33 @@ export function attachTelnyxMediaWs(httpServer) {
       return;
     }
 
+    // Helper function to send buffered PCM to ElevenLabs
+    function sendPcmToElevenLabs(pcmChunk) {
+      if (!elevenLabsWs || elevenLabsWs.readyState !== WebSocket.OPEN) return;
+      
+      const pcmBase64 = pcmChunk.toString("base64");
+      elevenLabsWs.send(JSON.stringify({
+        user_audio_chunk: pcmBase64
+      }));
+      audioForwardCount++;
+      
+      if (audioForwardCount <= 5 || audioForwardCount % 20 === 0) {
+        console.log(`🎵 [v6.3] Sent audio chunk #${audioForwardCount} to ElevenLabs (${pcmChunk.length} bytes = ${pcmChunk.length / 32}ms)`);
+      }
+    }
+
+    // Helper to process PCM buffer and send when we have enough
+    function processPcmBuffer() {
+      while (pcmBuffer.length >= ELEVENLABS_CHUNK_SIZE) {
+        const chunk = pcmBuffer.subarray(0, ELEVENLABS_CHUNK_SIZE);
+        pcmBuffer = pcmBuffer.subarray(ELEVENLABS_CHUNK_SIZE);
+        sendPcmToElevenLabs(chunk);
+      }
+    }
+
     // Connect to ElevenLabs Conversational AI WebSocket
     try {
-      console.log("🔗 [v6.2] Getting ElevenLabs signed URL...");
+      console.log("🔗 [v6.3] Getting ElevenLabs signed URL...");
       console.log(`🔗 Using Agent ID: ${ELEVENLABS_AGENT_ID}`);
       
       const signedUrlResponse = await fetch(
@@ -88,12 +120,12 @@ export function attachTelnyxMediaWs(httpServer) {
       }
       
       const { signed_url } = await signedUrlResponse.json();
-      console.log("✅ [v6.2] Got signed URL, connecting to ElevenLabs WebSocket...");
+      console.log("✅ [v6.3] Got signed URL, connecting to ElevenLabs WebSocket...");
       
       elevenLabsWs = new WebSocket(signed_url);
 
       elevenLabsWs.on("open", () => {
-        console.log("🎙️ [v6.2] Connected to ElevenLabs Conversational AI ✅");
+        console.log("🎙️ [v6.3] Connected to ElevenLabs Conversational AI ✅");
         // DON'T set isElevenLabsReady yet - wait for metadata response!
         
         // CRITICAL: Tell ElevenLabs the audio formats FIRST before any config
@@ -112,7 +144,7 @@ export function attachTelnyxMediaWs(httpServer) {
             }
           }
         }));
-        console.log("🎙️ [v6.2] Sent ElevenLabs config - waiting for metadata confirmation...");
+        console.log("🎙️ [v6.3] Sent ElevenLabs config - waiting for metadata confirmation...");
       });
       
       elevenLabsWs.on("error", (err) => {
@@ -132,22 +164,23 @@ export function attachTelnyxMediaWs(httpServer) {
           
           // Handle conversation metadata - NOW we're ready to send audio!
           if (msg.type === "conversation_initiation_metadata") {
-            console.log("📋 [v6.2] ElevenLabs conversation confirmed:", JSON.stringify(msg.conversation_initiation_metadata_event || msg));
+            console.log("📋 [v6.3] ElevenLabs conversation confirmed:", JSON.stringify(msg.conversation_initiation_metadata_event || msg));
             
             // NOW we're ready to receive/send audio
             isElevenLabsReady = true;
-            console.log("✅ [v6.2] ElevenLabs ready - now accepting audio");
+            console.log("✅ [v6.3] ElevenLabs ready - now accepting audio");
             
-            // Flush any buffered audio
-            if (audioBuffer.length > 0) {
-              console.log(`🎵 [v6.2] Flushing ${audioBuffer.length} buffered audio chunks`);
-              for (const pcmBase64 of audioBuffer) {
-                elevenLabsWs.send(JSON.stringify({
-                  user_audio_chunk: pcmBase64
-                }));
-                audioForwardCount++;
+            // Flush any pending audio chunks (already converted to PCM)
+            if (pendingAudioChunks.length > 0) {
+              console.log(`🎵 [v6.3] Flushing ${pendingAudioChunks.length} pending audio chunks`);
+              for (const chunk of pendingAudioChunks) {
+                pcmBuffer = Buffer.concat([pcmBuffer, chunk]);
               }
-              audioBuffer = [];
+              pendingAudioChunks = [];
+              processPcmBuffer();
+            }
+            return;
+          }
             }
             return;
           }
@@ -173,7 +206,7 @@ export function attachTelnyxMediaWs(httpServer) {
               }));
               
               if (audioReturnCount <= 5 || audioReturnCount % 50 === 0) {
-                console.log(`🔊 [v6.2] Sent audio #${audioReturnCount} to Telnyx (${pcmBuffer.length}→${ulawBuffer.length} bytes)`);
+                console.log(`🔊 [v6.3] Sent audio #${audioReturnCount} to Telnyx (${pcmBuffer.length}→${ulawBuffer.length} bytes)`);
               }
             }
             return;
@@ -225,7 +258,7 @@ export function attachTelnyxMediaWs(httpServer) {
         
         // Log first few messages
         if (messageCount <= 5) {
-          console.log(`📨 [v6.2] Telnyx msg #${messageCount}: event="${eventType}", ready=${isElevenLabsReady}`);
+          console.log(`📨 [v6.3] Telnyx msg #${messageCount}: event="${eventType}", ready=${isElevenLabsReady}`);
         } else if (messageCount % 100 === 0) {
           console.log(`📨 Telnyx msg #${messageCount} (event: ${eventType})`);
         }
@@ -233,7 +266,7 @@ export function attachTelnyxMediaWs(httpServer) {
         // Handle stream start
         if (eventType === "start" || eventType === "connected") {
           streamId = msg.stream_id;
-          console.log(`📞 [v6.2] Telnyx stream STARTED - ID: ${streamId}`);
+          console.log(`📞 [v6.3] Telnyx stream STARTED - ID: ${streamId}`);
           console.log(`📞 Media format:`, JSON.stringify(msg.start?.media_format || 'not specified'));
           return;
         }
@@ -241,7 +274,7 @@ export function attachTelnyxMediaWs(httpServer) {
         // Capture stream_id from any message if we don't have it
         if (!streamId && msg.stream_id) {
           streamId = msg.stream_id;
-          console.log(`📞 [v6.2] Captured stream_id: ${streamId}`);
+          console.log(`📞 [v6.3] Captured stream_id: ${streamId}`);
         }
         
         // Handle media (audio) from caller
@@ -250,37 +283,36 @@ export function attachTelnyxMediaWs(httpServer) {
           const ulawBuffer = Buffer.from(msg.media.payload, "base64");
           
           // 🔥 CONVERT μ-law 8kHz → PCM 16kHz
-          const pcmBuffer = ulawToPcm16k(ulawBuffer);
+          const pcmChunk = ulawToPcm16k(ulawBuffer);
           
-          // Encode as base64 for ElevenLabs
-          const pcmBase64 = pcmBuffer.toString("base64");
-          
-          if (!elevenLabsWs || !isElevenLabsReady) {
-            // Buffer audio until ElevenLabs is ready (max 50 chunks = ~1 second)
-            if (audioBuffer.length < 50) {
-              audioBuffer.push(pcmBase64);
-              if (messageCount <= 5) {
-                console.log(`📦 Buffering audio #${audioBuffer.length} (ElevenLabs not ready)`);
+          if (!isElevenLabsReady) {
+            // Buffer converted PCM until ElevenLabs is ready (max ~2 seconds)
+            if (pendingAudioChunks.length < 100) {
+              pendingAudioChunks.push(pcmChunk);
+              if (messageCount <= 10) {
+                console.log(`📦 Buffering audio (ElevenLabs not ready) - ${pendingAudioChunks.length} chunks`);
               }
             }
             return;
           }
           
-          // Send to ElevenLabs
-          elevenLabsWs.send(JSON.stringify({
-            user_audio_chunk: pcmBase64
-          }));
-          
-          audioForwardCount++;
-          if (audioForwardCount <= 5 || audioForwardCount % 100 === 0) {
-            console.log(`🎵 [v6.2] Forwarded audio #${audioForwardCount} to ElevenLabs (${ulawBuffer.length}→${pcmBuffer.length} bytes)`);
-          }
+          // Add to PCM buffer and send when we have enough
+          pcmBuffer = Buffer.concat([pcmBuffer, pcmChunk]);
+          processPcmBuffer();
           return;
         }
         
         // Handle stream stop
         if (eventType === "stop" || eventType === "disconnected") {
           console.log("📴 Telnyx stream stopped");
+          
+          // Flush any remaining buffered audio
+          if (pcmBuffer.length > 0 && elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
+            console.log(`🎵 [v6.3] Flushing final ${pcmBuffer.length} bytes of audio`);
+            sendPcmToElevenLabs(pcmBuffer);
+            pcmBuffer = Buffer.alloc(0);
+          }
+          
           if (elevenLabsWs) {
             elevenLabsWs.close();
           }
@@ -299,7 +331,7 @@ export function attachTelnyxMediaWs(httpServer) {
 
     telnyxWs.on("close", (code, reason) => {
       console.log(`📴 Telnyx media WS disconnected (code: ${code})`);
-      console.log(`📊 Stats: ${messageCount} msgs received, ${audioForwardCount} audio sent to EL, ${audioReturnCount} audio returned`);
+      console.log(`📊 Stats: ${messageCount} msgs received, ${audioForwardCount} audio chunks sent to EL, ${audioReturnCount} audio returned`);
       if (elevenLabsWs) {
         elevenLabsWs.close();
       }
@@ -310,5 +342,5 @@ export function attachTelnyxMediaWs(httpServer) {
     });
   });
 
-  console.log("🎧 [v6.2] Telnyx Media WebSocket handler attached with audio conversion");
+  console.log("🎧 [v6.3] Telnyx Media WebSocket handler attached with buffered audio");
 }
