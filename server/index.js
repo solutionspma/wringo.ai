@@ -21,7 +21,7 @@ app.use(express.json({ limit: "2mb" }));
 app.get("/", (_req, res) => res.json({ 
   service: "wringo.ai backend",
   status: "running",
-  version: "5.0"
+  version: "5.0.1"
 }));
 
 // Health check with service status
