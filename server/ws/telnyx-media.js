@@ -11,7 +11,7 @@ const ELEVENLABS_CHUNK_SIZE = 8000; // bytes (4000 samples * 2 bytes per sample)
 
 // Log env var status at startup
 console.log("==========================================");
-console.log("🎙️ [v6.3] Telnyx-Media Bridge - Buffered Audio");
+console.log("🎙️ [v6.4] Telnyx-Media Bridge - Explicit Little Endian");
 console.log("==========================================");
 console.log(`🔑 ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY ? `${ELEVENLABS_API_KEY.substring(0, 8)}...` : '⚠️ NOT SET'}`);
 console.log(`🤖 ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID || '⚠️ NOT SET'}`);
@@ -153,7 +153,8 @@ export function attachTelnyxMediaWs(httpServer) {
       });
       
       elevenLabsWs.on("close", (code, reason) => {
-        console.log(`📴 ElevenLabs WS closed (code: ${code})`);
+        const reasonStr = reason ? reason.toString() : 'no reason';
+        console.log(`📴 ElevenLabs WS closed (code: ${code}, reason: ${reasonStr})`);
         isElevenLabsReady = false;
       });
 

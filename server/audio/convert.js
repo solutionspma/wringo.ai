@@ -49,9 +49,9 @@ const MULAW_DECODE_TABLE = new Int16Array([
 ]);
 
 /**
- * Convert μ-law 8kHz → PCM 16-bit 16kHz
+ * Convert μ-law 8kHz → PCM 16-bit 16kHz (Little Endian)
  * @param {Buffer} ulawBuffer - Raw μ-law bytes from Telnyx
- * @returns {Buffer} PCM 16-bit 16kHz buffer for ElevenLabs
+ * @returns {Buffer} PCM 16-bit 16kHz Little Endian buffer for ElevenLabs
  */
 export function ulawToPcm16k(ulawBuffer) {
   // Step 1: Decode μ-law to PCM 16-bit (8kHz)
@@ -61,19 +61,25 @@ export function ulawToPcm16k(ulawBuffer) {
   }
   
   // Step 2: Upsample 8kHz → 16kHz (linear interpolation)
-  const pcm16k = new Int16Array(pcm8k.length * 2);
+  // Output size = input samples * 2 (for upsampling) * 2 (bytes per sample)
+  const outputBuffer = Buffer.alloc(pcm8k.length * 4);
+  const view = new DataView(outputBuffer.buffer, outputBuffer.byteOffset, outputBuffer.byteLength);
+  
   for (let i = 0; i < pcm8k.length; i++) {
-    pcm16k[i * 2] = pcm8k[i];
-    // Interpolate between samples
+    const sample = pcm8k[i];
+    // Write original sample (Little Endian)
+    view.setInt16(i * 4, sample, true); // true = Little Endian
+    
+    // Write interpolated sample (Little Endian)
     if (i < pcm8k.length - 1) {
-      pcm16k[i * 2 + 1] = Math.round((pcm8k[i] + pcm8k[i + 1]) / 2);
+      const interpolated = Math.round((pcm8k[i] + pcm8k[i + 1]) / 2);
+      view.setInt16(i * 4 + 2, interpolated, true);
     } else {
-      pcm16k[i * 2 + 1] = pcm8k[i];
+      view.setInt16(i * 4 + 2, sample, true);
     }
   }
   
-  // Convert to Buffer
-  return Buffer.from(pcm16k.buffer);
+  return outputBuffer;
 }
 
 /**
@@ -100,25 +106,29 @@ const MULAW_ENCODE_TABLE = new Uint8Array(65536);
 })();
 
 /**
- * Convert PCM 16-bit 16kHz → μ-law 8kHz
- * @param {Buffer} pcmBuffer - PCM 16-bit 16kHz buffer from ElevenLabs
+ * Convert PCM 16-bit 16kHz (Little Endian) → μ-law 8kHz
+ * @param {Buffer} pcmBuffer - PCM 16-bit 16kHz Little Endian buffer from ElevenLabs
  * @returns {Buffer} μ-law 8kHz buffer for Telnyx
  */
 export function pcm16kToUlaw(pcmBuffer) {
-  const pcm16k = new Int16Array(pcmBuffer.buffer, pcmBuffer.byteOffset, pcmBuffer.length / 2);
+  // Read PCM as Little Endian using DataView
+  const view = new DataView(pcmBuffer.buffer, pcmBuffer.byteOffset, pcmBuffer.byteLength);
+  const numSamples = pcmBuffer.length / 2;
   
-  // Step 1: Downsample 16kHz → 8kHz (take every other sample)
-  const pcm8k = new Int16Array(Math.floor(pcm16k.length / 2));
-  for (let i = 0; i < pcm8k.length; i++) {
-    // Average adjacent samples for better quality
-    pcm8k[i] = Math.round((pcm16k[i * 2] + pcm16k[i * 2 + 1]) / 2);
-  }
+  // Step 1: Downsample 16kHz → 8kHz (average adjacent samples)
+  const pcm8kLength = Math.floor(numSamples / 2);
+  const ulawBuffer = Buffer.alloc(pcm8kLength);
   
-  // Step 2: Encode to μ-law
-  const ulawBuffer = Buffer.alloc(pcm8k.length);
-  for (let i = 0; i < pcm8k.length; i++) {
-    // Convert signed to unsigned for table lookup
-    ulawBuffer[i] = MULAW_ENCODE_TABLE[pcm8k[i] + 32768];
+  for (let i = 0; i < pcm8kLength; i++) {
+    // Read two samples as Little Endian
+    const sample1 = view.getInt16(i * 4, true);     // true = Little Endian
+    const sample2 = view.getInt16(i * 4 + 2, true);
+    
+    // Average for downsampling
+    const avgSample = Math.round((sample1 + sample2) / 2);
+    
+    // Encode to μ-law using table lookup
+    ulawBuffer[i] = MULAW_ENCODE_TABLE[avgSample + 32768];
   }
   
   return ulawBuffer;
