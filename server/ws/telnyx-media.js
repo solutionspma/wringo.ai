@@ -181,9 +181,6 @@ export function attachTelnyxMediaWs(httpServer) {
             }
             return;
           }
-            }
-            return;
-          }
           
           // Handle audio response from ElevenLabs
           if (msg.type === "audio" && msg.audio_event?.audio_base_64) {
