@@ -179,29 +179,43 @@ export function attachTelnyxMediaWs(httpServer) {
       });
 
       elevenLabsWs.on("error", (err) => {
-        console.error("ElevenLabs WS error:", err.message);
+        console.error("❌ ElevenLabs WS error:", err.message);
         isElevenLabsReady = false;
       });
 
     } catch (err) {
-      console.error("Failed to connect to ElevenLabs:", err.message);
+      console.error("❌ Failed to connect to ElevenLabs:", err.message);
     }
 
     // Handle Telnyx media stream messages
     telnyxWs.on("message", (data, isBinary) => {
       messageCount++;
       
-      console.log(`📨 Telnyx msg #${messageCount} - isBinary: ${isBinary}, type: ${typeof data}, length: ${data?.length || 0}`);
+      // Log first few messages with ElevenLabs status
+      if (messageCount <= 5) {
+        console.log(`📨 [v5.1] Telnyx msg #${messageCount} - isBinary: ${isBinary}, length: ${data?.length || 0}, elevenLabsReady: ${isElevenLabsReady}`);
+      } else if (messageCount % 100 === 0) {
+        console.log(`📨 Telnyx msg #${messageCount} (periodic) - elevenLabsReady: ${isElevenLabsReady}`);
+      }
       
       try {
-        // Handle binary data
+        // Handle binary data - this is raw audio from Telnyx
         if (isBinary || Buffer.isBuffer(data)) {
-          console.log(`📨 Binary message #${messageCount}: ${data.length} bytes`);
-          // Binary audio data - forward to ElevenLabs
+          // Log first few binary messages with forwarding status
+          if (messageCount <= 5) {
+            console.log(`🎵 Binary audio #${messageCount}: ${data.length} bytes, forwarding: ${!!(elevenLabsWs && isElevenLabsReady)}`);
+          }
+          
+          // Forward binary audio to ElevenLabs
           if (elevenLabsWs && isElevenLabsReady) {
             elevenLabsWs.send(JSON.stringify({
               user_audio_chunk: data.toString('base64')
             }));
+            audioForwardCount++;
+            
+            if (audioForwardCount <= 5 || audioForwardCount % 100 === 0) {
+              console.log(`🔊 [v5.1] Forwarded binary audio #${audioForwardCount} to ElevenLabs`);
+            }
           }
           return;
         }
