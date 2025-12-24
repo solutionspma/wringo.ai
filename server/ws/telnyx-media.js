@@ -11,7 +11,7 @@ const ELEVENLABS_CHUNK_SIZE = 8000; // bytes (4000 samples * 2 bytes per sample)
 
 // Log env var status at startup
 console.log("==========================================");
-console.log("🎙️ [v6.4] Telnyx-Media Bridge - Explicit Little Endian");
+console.log("🎙️ [v6.5] Telnyx-Media Bridge - Explicit Little Endian");
 console.log("==========================================");
 console.log(`🔑 ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY ? `${ELEVENLABS_API_KEY.substring(0, 8)}...` : '⚠️ NOT SET'}`);
 console.log(`🤖 ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID || '⚠️ NOT SET'}`);
@@ -19,9 +19,9 @@ console.log(`📦 Audio chunk size: ${ELEVENLABS_CHUNK_SIZE} bytes (250ms)`);
 console.log("==========================================");
 
 /**
- * Bridge Telnyx Media Stream to ElevenLabs Conversational AI (v6.4)
+ * Bridge Telnyx Media Stream to ElevenLabs Conversational AI (v6.5)
  * 
- * v6.4: BUFFERED AUDIO CHUNKS
+ * v6.5: BUFFERED AUDIO CHUNKS
  * - ElevenLabs recommends 4000 samples (250ms) per chunk
  * - Telnyx sends 160 bytes (20ms) per chunk
  * - We buffer PCM until we have 8000 bytes, then send
@@ -40,10 +40,10 @@ export function attachTelnyxMediaWs(httpServer) {
 
   httpServer.on("upgrade", (req, socket, head) => {
     const { url = "" } = req;
-    console.log(`🔌 [v6.4] WebSocket upgrade request for: ${url}`);
+    console.log(`🔌 [v6.5] WebSocket upgrade request for: ${url}`);
     if (url.startsWith("/ws/telnyx-media")) {
       wss.handleUpgrade(req, socket, head, (ws) => {
-        console.log(`✅ [v6.4] WebSocket upgrade completed`);
+        console.log(`✅ [v6.5] WebSocket upgrade completed`);
         wss.emit("connection", ws, req);
       });
       return;
@@ -53,7 +53,7 @@ export function attachTelnyxMediaWs(httpServer) {
   });
 
   wss.on("connection", async (telnyxWs, req) => {
-    console.log("📡 [v6.4] Telnyx media WS connected");
+    console.log("📡 [v6.5] Telnyx media WS connected");
     console.log(`📡 Request URL: ${req.url}`);
     
     let elevenLabsWs = null;
@@ -86,7 +86,7 @@ export function attachTelnyxMediaWs(httpServer) {
       audioForwardCount++;
       
       if (audioForwardCount <= 5 || audioForwardCount % 20 === 0) {
-        console.log(`🎵 [v6.4] Sent audio chunk #${audioForwardCount} to ElevenLabs (${pcmChunk.length} bytes = ${pcmChunk.length / 32}ms)`);
+        console.log(`🎵 [v6.5] Sent audio chunk #${audioForwardCount} to ElevenLabs (${pcmChunk.length} bytes = ${pcmChunk.length / 32}ms)`);
       }
     }
 
@@ -101,7 +101,7 @@ export function attachTelnyxMediaWs(httpServer) {
 
     // Connect to ElevenLabs Conversational AI WebSocket
     try {
-      console.log("🔗 [v6.4] Getting ElevenLabs signed URL...");
+      console.log("🔗 [v6.5] Getting ElevenLabs signed URL...");
       console.log(`🔗 Using Agent ID: ${ELEVENLABS_AGENT_ID}`);
       
       const signedUrlResponse = await fetch(
@@ -120,31 +120,25 @@ export function attachTelnyxMediaWs(httpServer) {
       }
       
       const { signed_url } = await signedUrlResponse.json();
-      console.log("✅ [v6.4] Got signed URL, connecting to ElevenLabs WebSocket...");
+      console.log("✅ [v6.5] Got signed URL, connecting to ElevenLabs WebSocket...");
       
       elevenLabsWs = new WebSocket(signed_url);
 
       elevenLabsWs.on("open", () => {
-        console.log("🎙️ [v6.4] Connected to ElevenLabs Conversational AI ✅");
+        console.log("🎙️ [v6.5] Connected to ElevenLabs Conversational AI ✅");
         // DON'T set isElevenLabsReady yet - wait for metadata response!
         
-        // CRITICAL: Tell ElevenLabs the audio formats FIRST before any config
-        // Per ElevenLabs docs, this must be sent immediately on connection
+        // Send conversation initiation - only override TTS output format
+        // Don't override agent settings like first_message (not allowed by agent config)
         elevenLabsWs.send(JSON.stringify({
           type: "conversation_initiation_client_data",
           conversation_config_override: {
-            agent: {
-              prompt: {
-                prompt: "You are Jason, a friendly and efficient voice AI assistant for Wringo.ai. You help with lead capture and referrals for Pitch Marketing Agency. Be conversational but concise."
-              },
-              first_message: "Hey there! This is Jason from Wringo. How can I help you today?"
-            },
             tts: {
               output_format: "pcm_16000"
             }
           }
         }));
-        console.log("🎙️ [v6.4] Sent ElevenLabs config - waiting for metadata confirmation...");
+        console.log("🎙️ [v6.5] Sent ElevenLabs config (TTS pcm_16000) - waiting for metadata...");
       });
       
       elevenLabsWs.on("error", (err) => {
@@ -165,15 +159,15 @@ export function attachTelnyxMediaWs(httpServer) {
           
           // Handle conversation metadata - NOW we're ready to send audio!
           if (msg.type === "conversation_initiation_metadata") {
-            console.log("📋 [v6.4] ElevenLabs conversation confirmed:", JSON.stringify(msg.conversation_initiation_metadata_event || msg));
+            console.log("📋 [v6.5] ElevenLabs conversation confirmed:", JSON.stringify(msg.conversation_initiation_metadata_event || msg));
             
             // NOW we're ready to receive/send audio
             isElevenLabsReady = true;
-            console.log("✅ [v6.4] ElevenLabs ready - now accepting audio");
+            console.log("✅ [v6.5] ElevenLabs ready - now accepting audio");
             
             // Flush any pending audio chunks (already converted to PCM)
             if (pendingAudioChunks.length > 0) {
-              console.log(`🎵 [v6.4] Flushing ${pendingAudioChunks.length} pending audio chunks`);
+              console.log(`🎵 [v6.5] Flushing ${pendingAudioChunks.length} pending audio chunks`);
               for (const chunk of pendingAudioChunks) {
                 pcmBuffer = Buffer.concat([pcmBuffer, chunk]);
               }
@@ -204,7 +198,7 @@ export function attachTelnyxMediaWs(httpServer) {
               }));
               
               if (audioReturnCount <= 5 || audioReturnCount % 50 === 0) {
-                console.log(`🔊 [v6.4] Sent audio #${audioReturnCount} to Telnyx (${pcmBuffer.length}→${ulawBuffer.length} bytes)`);
+                console.log(`🔊 [v6.5] Sent audio #${audioReturnCount} to Telnyx (${pcmBuffer.length}→${ulawBuffer.length} bytes)`);
               }
             }
             return;
@@ -256,7 +250,7 @@ export function attachTelnyxMediaWs(httpServer) {
         
         // Log first few messages
         if (messageCount <= 5) {
-          console.log(`📨 [v6.4] Telnyx msg #${messageCount}: event="${eventType}", ready=${isElevenLabsReady}`);
+          console.log(`📨 [v6.5] Telnyx msg #${messageCount}: event="${eventType}", ready=${isElevenLabsReady}`);
         } else if (messageCount % 100 === 0) {
           console.log(`📨 Telnyx msg #${messageCount} (event: ${eventType})`);
         }
@@ -264,7 +258,7 @@ export function attachTelnyxMediaWs(httpServer) {
         // Handle stream start
         if (eventType === "start" || eventType === "connected") {
           streamId = msg.stream_id;
-          console.log(`📞 [v6.4] Telnyx stream STARTED - ID: ${streamId}`);
+          console.log(`📞 [v6.5] Telnyx stream STARTED - ID: ${streamId}`);
           console.log(`📞 Media format:`, JSON.stringify(msg.start?.media_format || 'not specified'));
           return;
         }
@@ -272,7 +266,7 @@ export function attachTelnyxMediaWs(httpServer) {
         // Capture stream_id from any message if we don't have it
         if (!streamId && msg.stream_id) {
           streamId = msg.stream_id;
-          console.log(`📞 [v6.4] Captured stream_id: ${streamId}`);
+          console.log(`📞 [v6.5] Captured stream_id: ${streamId}`);
         }
         
         // Handle media (audio) from caller
@@ -306,7 +300,7 @@ export function attachTelnyxMediaWs(httpServer) {
           
           // Flush any remaining buffered audio
           if (pcmBuffer.length > 0 && elevenLabsWs && elevenLabsWs.readyState === WebSocket.OPEN) {
-            console.log(`🎵 [v6.4] Flushing final ${pcmBuffer.length} bytes of audio`);
+            console.log(`🎵 [v6.5] Flushing final ${pcmBuffer.length} bytes of audio`);
             sendPcmToElevenLabs(pcmBuffer);
             pcmBuffer = Buffer.alloc(0);
           }
@@ -340,5 +334,5 @@ export function attachTelnyxMediaWs(httpServer) {
     });
   });
 
-  console.log("🎧 [v6.4] Telnyx Media WebSocket handler attached with buffered audio");
+  console.log("🎧 [v6.5] Telnyx Media WebSocket handler attached with buffered audio");
 }

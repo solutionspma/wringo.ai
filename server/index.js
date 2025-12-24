@@ -27,7 +27,7 @@ app.get("/", (_req, res) => res.json({
 // Health check with service status
 app.get("/health", (_req, res) => res.json({ 
   ok: true,
-  version: "6.4-explicit-endian", // Version marker for deployment verification
+  version: "6.5-no-agent-override", // Version marker for deployment verification
   services: {
     modcrm: modcrm.getStatus()
   }
