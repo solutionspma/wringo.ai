@@ -69,8 +69,13 @@ attachTelnyxMediaWs(server);
 
 const PORT = Number(process.env.PORT || 3001);
 server.listen(PORT, () => {
-  console.log(`\n🚀 wringo.ai backend listening on http://localhost:${PORT}\n`);
+  console.log(`\n🚀 wringo.ai backend [STRIPE-DEBUG-v8.0] listening on http://localhost:${PORT}\n`);
   console.log(`📡 API Endpoints:`);
+  console.log(`   - Fingerprint:       GET  /__whoami`);
+  console.log(`   - Stripe Pricing:    GET  /api/stripe/pricing`);
+  console.log(`   - Stripe Checkout:   POST /api/stripe/checkout`);
+  console.log(`   - Stripe Reload:     POST /api/stripe/reload`);
+  console.log(`   - Stripe Webhook:    POST /api/stripe/webhook`);
   console.log(`   - ElevenLabs signer: GET  /api/elevenlabs/signed-url`);
   console.log(`   - Telnyx inbound:    POST /api/telnyx/inbound`);
   console.log(`   - Webhooks:          POST /api/webhooks/elevenlabs`);
