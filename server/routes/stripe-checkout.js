@@ -13,23 +13,19 @@ router.get("/pricing", async (req, res) => {
     const prices = await stripe.prices.list({
       active: true,
       expand: ["data.product"],
-      limit: 100,
+      limit: 20,
     });
 
-    const scoped = prices.data.filter(p => {
-      const prod = p.product;
-      return prod?.metadata?.app === "wringoai";
+    // DEBUG MODE: Return raw Stripe data to verify what we're getting
+    res.json({
+      count: prices.data.length,
+      raw: prices.data.map(p => ({
+        id: p.id,
+        product: p.product?.id,
+        name: p.product?.name,
+        metadata: p.product?.metadata,
+      })),
     });
-
-    res.json(scoped.map(p => ({
-      priceId: p.id,
-      name: p.product.name,
-      description: p.product.description,
-      amount: p.unit_amount,
-      interval: p.recurring?.interval || "one_time",
-      type: p.product.metadata.type,
-      category: p.product.metadata.category,
-    })));
   } catch (err) {
     console.error("[Stripe Pricing]", err);
     res.status(500).json({ error: err.message });

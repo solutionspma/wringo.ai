@@ -40,6 +40,16 @@ app.get("/health", (_req, res) => res.json({
   }
 }));
 
+// Fingerprint endpoint to verify deployed code
+app.get("/__whoami", (req, res) => {
+  res.json({
+    version: "WRINGO-PRICING-FIX-001",
+    timestamp: new Date().toISOString(),
+    commit: process.env.RENDER_GIT_COMMIT || "unknown",
+    pricingFilter: "metadata.app === wringoai",
+  });
+});
+
 // API Routes
 app.use("/api/elevenlabs", elevenlabsRoutes);
 app.use("/api/telnyx", telnyxRoutes);
