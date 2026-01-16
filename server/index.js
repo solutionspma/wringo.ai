@@ -34,7 +34,7 @@ app.get("/", (_req, res) => res.json({
 // Health check with service status
 app.get("/health", (_req, res) => res.json({ 
   ok: true,
-  version: "6.6-bidirectional-rtp", // Version marker for deployment verification
+  version: "7.0-stripe-billing", // Version marker for deployment verification
   services: {
     level10crm: level10crm.getStatus()
   }
