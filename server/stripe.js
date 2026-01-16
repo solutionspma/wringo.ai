@@ -19,7 +19,7 @@ export async function getActivePricing() {
   });
 
   return prices.data.map(p => {
-    const product = p.product as Stripe.Product;
+    const product = p.product;
     return {
       priceId: p.id,
       productId: product.id,
