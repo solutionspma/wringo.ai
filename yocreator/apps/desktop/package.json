@@ -1,0 +1,10 @@
+{
+  "name": "desktop",
+  "main": "electron.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^27.0.0"
+  }
+}

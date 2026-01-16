@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    ports:
+      - "5001:5001"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE=${SUPABASE_SERVICE_ROLE}
+    restart: unless-stopped
+
+  python-voice:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.python
+    ports:
+      - "5002:5002"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE=${SUPABASE_SERVICE_ROLE}
+    volumes:
+      - ./models:/app/models
+      - ./output:/app/output
+    restart: unless-stopped
+
+  python-avatar:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.python
+    ports:
+      - "5003:5003"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE=${SUPABASE_SERVICE_ROLE}
+    volumes:
+      - ./models:/app/models
+      - ./output:/app/output
+    restart: unless-stopped
+
+  python-video:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.python
+    ports:
+      - "5004:5004"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE=${SUPABASE_SERVICE_ROLE}
+    volumes:
+      - ./models:/app/models
+      - ./output:/app/output
+    restart: unless-stopped

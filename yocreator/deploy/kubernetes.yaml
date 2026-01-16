@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yocreator-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: yocreator-backend
+  template:
+    metadata:
+      labels:
+        app: yocreator-backend
+    spec:
+      containers:
+      - name: backend
+        image: your-registry/yocreator-backend:latest
+        ports:
+        - containerPort: 5001
+        env:
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: yocreator-secrets
+              key: supabase-url
+        - name: SUPABASE_SERVICE_ROLE
+          valueFrom:
+            secretKeyRef:
+              name: yocreator-secrets
+              key: supabase-service-role
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yocreator-backend-service
+spec:
+  selector:
+    app: yocreator-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5001
+  type: LoadBalancer

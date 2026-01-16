@@ -1,0 +1,36 @@
+# ======================================
+# YOcreator Python Dependencies
+# ======================================
+
+# Core
+numpy
+scipy
+requests
+python-dotenv
+
+# Image/Video Processing
+opencv-python
+pillow
+ffmpeg-python
+
+# AI/ML
+torch
+torchaudio
+torchvision
+
+# Face Detection & Analysis
+insightface
+onnxruntime
+onnxruntime-gpu
+
+# Text-to-Speech (fallback)
+gtts
+
+# Transformers & Diffusers (for advanced models)
+transformers
+diffusers
+accelerate
+
+# Optional: For full avatar pipeline
+# TTS  # Coqui TTS for XTTS
+# mediapipe  # Google's face mesh

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/app.json",
+  "name": "yocreator-backend",
+  "scripts": {
+    "build": "echo 'Building backend...'",
+    "start": "node server/node/src/index.js"
+  },
+  "env": {
+    "SUPABASE_URL": {
+      "description": "Supabase project URL",
+      "required": true
+    },
+    "SUPABASE_SERVICE_ROLE": {
+      "description": "Supabase service role key",
+      "required": true
+    }
+  },
+  "image": "heroku/nodejs"
+}

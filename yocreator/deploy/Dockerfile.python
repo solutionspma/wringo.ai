@@ -1,0 +1,27 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python requirements
+COPY server/python/requirements.txt ./
+
+# Install Python packages
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY server/python ./server/python
+COPY pipeline ./pipeline
+
+# Create output directories
+RUN mkdir -p /app/output/voice /app/output/avatar /app/output/video /app/output/final
+
+EXPOSE 5002 5003 5004
+
+# Default command (override in docker-compose for specific services)
+CMD ["python", "server/python/worker.py"]

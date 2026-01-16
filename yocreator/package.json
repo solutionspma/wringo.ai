@@ -1,0 +1,17 @@
+{
+  "name": "yocreator",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/desktop",
+    "apps/mobile",
+    "server/node",
+    "cli"
+  ],
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:node": "pnpm --filter backend-node dev",
+    "dev:desktop": "pnpm --filter desktop start",
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:node\""
+  }
+}

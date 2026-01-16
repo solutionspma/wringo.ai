@@ -1,0 +1,14 @@
+[build]
+  base = "apps/web"
+  command = "npm install && npm run build"
+  publish = "out"
+
+# Static assets should be served directly (no redirect)
+# Only redirect HTML routes that don't exist to support client-side routing
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"

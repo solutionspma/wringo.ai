@@ -1,0 +1,32 @@
+# Multi-stage build for Node.js backend
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy workspace files
+COPY package.json ./
+COPY server/node/package.json ./server/node/
+
+# Install dependencies
+RUN npm install -g pnpm
+RUN pnpm install
+
+# Copy source
+COPY server/node ./server/node
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/server/node ./server/node
+COPY --from=builder /app/node_modules ./node_modules
+
+WORKDIR /app/server/node
+
+EXPOSE 5001
+
+CMD ["node", "src/index.js"]

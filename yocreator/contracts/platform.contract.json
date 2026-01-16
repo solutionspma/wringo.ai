@@ -1,0 +1,13 @@
+{
+  "$schema": "platform-contract-v1",
+  "platform": "yocreator",
+  "category": "creative-av",
+  "runtime_dependency": null,
+  "billing_model": "usage-based",
+  "enforcement_model": "quota-based",
+  "governed_by": "self",
+  "status": "development",
+  "description": "AI-powered content creation platform",
+  "primary_entities": ["projects", "assets", "generations", "users"],
+  "integrations": ["supabase", "netlify", "ai-workers"]
+}
