@@ -43,13 +43,13 @@
         const res = await fetch('https://wringo-backend.onrender.com/api/stripe/pricing');
         const prices = await res.json();
 
-        // Group by type
-        const subscriptions = prices.filter(p => p.interval !== 'one_time');
-        const oneTime = prices.filter(p => p.interval === 'one_time' && !p.metadata.is_credit_bundle);
-        const bundles = prices.filter(p => p.metadata.is_credit_bundle === 'true');
+        // Group by interval
+        const subscriptions = prices.filter(p => p.interval && p.interval !== 'one_time');
+        const oneTime = prices.filter(p => p.interval === 'one_time' || !p.interval);
 
-        renderPricing(subscriptions, oneTime, bundles);
+        renderPricing(subscriptions, oneTime);
       } catch (err) {
+        console.error('Pricing load error:', err);
         document.getElementById('pricing-container').innerHTML = `
           <div style="text-align: center; padding: 60px; color: #ff6b6b;">
             <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
@@ -59,7 +59,7 @@
       }
     }
 
-    function renderPricing(subscriptions, oneTime, bundles) {
+    function renderPricing(subscriptions, oneTime) {
       const container = document.getElementById('pricing-container');
       
       let html = '<div style="max-width: 1200px; margin: 0 auto;">';
@@ -73,12 +73,12 @@
           html += `
             <div class="yo-card">
               <div class="yo-content">
-                <h3>${price.productName}</h3>
+                <h3>${price.name}</h3>
                 <div style="font-size: 48px; font-weight: 800; color: var(--brand); margin: 20px 0;">
                   $${amount}
                   <span style="font-size: 18px; color: var(--muted);">/${price.interval}</span>
                 </div>
-                <p>${price.productDescription || ''}</p>
+                <p>${price.description || ''}</p>
                 <button onclick="checkout('${price.priceId}', 'subscription')" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
                   Subscribe Now
                 </button>
@@ -89,21 +89,21 @@
         html += '</div>';
       }
 
-      // One-time actions
+      // One-time purchases
       if (oneTime.length > 0) {
-        html += '<h2 style="text-align: center; margin: 80px 0 40px;">Pay-Per-Use Actions</h2>';
+        html += '<h2 style="text-align: center; margin: 80px 0 40px;">One-Time Purchases</h2>';
         html += '<div class="yo-grid">';
         oneTime.forEach(price => {
           const amount = (price.amount / 100).toFixed(2);
           html += `
             <div class="yo-card">
               <div class="yo-content">
-                <h3>${price.productName}</h3>
+                <h3>${price.name}</h3>
                 <div style="font-size: 36px; font-weight: 800; color: var(--speak); margin: 20px 0;">
                   $${amount}
                 </div>
-                <p>${price.productDescription || 'One-time purchase'}</p>
-                <button onclick="checkout('${price.priceId}', 'action', '${price.productName.toLowerCase().replace(/\s+/g, '_')}')" class="btn btn-secondary" style="width: 100%; margin-top: 20px;">
+                <p>${price.description || 'One-time purchase'}</p>
+                <button onclick="checkout('${price.priceId}', 'payment')" class="btn btn-secondary" style="width: 100%; margin-top: 20px;">
                   Purchase
                 </button>
               </div>
@@ -112,12 +112,6 @@
         });
         html += '</div>';
       }
-
-      // Credit bundles
-      if (bundles.length > 0) {
-        html += '<h2 style="text-align: center; margin: 80px 0 40px;">Credit Bundles</h2>';
-        html += '<div class="yo-grid">';
-        bundles.forEach(price => {
           const amount = (price.amount / 100).toFixed(2);
           const creditAmount = price.metadata.credit_amount || '?';
           html += `
@@ -142,28 +136,21 @@
       container.innerHTML = html;
     }
 
-    async function checkout(priceId, purchaseType, entitlementKey = '') {
-      // TODO: Get actual user ID from auth session
-      const userId = prompt('Enter your user ID (temporary - will use auth):');
-      if (!userId) return;
+    async function checkout(priceId, mode) {
+      const userId = 'demo-user-' + Date.now();
 
       try {
-        const res = await fetch('https://wringo-backend.onrender.com/api/stripe/create-checkout-session', {
+        const endpoint = mode === 'subscription' ? '/api/stripe/checkout' : '/api/stripe/reload';
+        const res = await fetch('https://wringo-backend.onrender.com' + endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            priceId,
-            userId,
-            purchaseType,
-            entitlementKey,
-            successUrl: window.location.origin + '/success',
-            cancelUrl: window.location.href,
-          }),
+          body: JSON.stringify({ priceId, userId }),
         });
 
         const { url } = await res.json();
-        window.location.href = url;
+        if (url) window.location.href = url;
       } catch (err) {
+        console.error('Checkout error:', err);
         alert('Checkout failed. Please try again.');
       }
     }
