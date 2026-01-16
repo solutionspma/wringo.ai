@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { stripe } from "./stripe.js";
+import { stripe, getActivePricing } from "../stripe.js";
 import { createClient } from "@supabase/supabase-js";
 
 const router = Router();
@@ -70,7 +70,6 @@ router.post("/create-checkout-session", async (req, res) => {
  */
 router.get("/pricing", async (req, res) => {
   try {
-    const { getActivePricing } = await import("./stripe.js");
     const pricing = await getActivePricing();
     res.json(pricing);
   } catch (err) {
