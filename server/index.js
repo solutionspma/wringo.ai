@@ -28,28 +28,19 @@ app.use(express.json({ limit: "2mb" }));
 app.get("/", (_req, res) => res.json({ 
   service: "wringo.ai backend",
   status: "running",
-  version: "8.1-PAGINATION-FIX-DEPLOYED"
+  version: "9.0-REBUILT-PRICING"
 }));
 
 // Health check with service status
 app.get("/health", (_req, res) => res.json({ 
   ok: true,
-  version: "8.1-PAGINATION-FIX", 
+  version: "9.0-REBUILT-PRICING", 
   commit: process.env.RENDER_GIT_COMMIT || "local",
+  timestamp: new Date().toISOString(),
   services: {
     level10crm: level10crm.getStatus()
   }
 }));
-
-// Fingerprint endpoint to verify deployed code
-app.get("/__whoami", (req, res) => {
-  res.json({
-    version: "WRINGO-PRICING-FIX-001",
-    timestamp: new Date().toISOString(),
-    commit: process.env.RENDER_GIT_COMMIT || "unknown",
-    pricingFilter: "metadata.app === wringoai",
-  });
-});
 
 // API Routes
 app.use("/api/elevenlabs", elevenlabsRoutes);

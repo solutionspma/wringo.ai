@@ -1,107 +1,69 @@
 import { Router } from "express";
 import { stripe } from "../stripe.js";
-import { grantEntitlement } from "../services/entitlements.js";
 
 const router = Router();
 
 /**
  * GET /api/stripe/pricing
- * Fetch all WringoAI products (subscriptions + reloads)
+ * Returns WringoAI products only - hardcoded product IDs
  */
 router.get("/pricing", async (req, res) => {
   try {
-    // Fetch ALL active prices (Stripe default is 10, max is 100 per request)
-    let allPrices = [];
-    let hasMore = true;
-    let startingAfter = undefined;
+    const wringoProductIds = [
+      "prod_Tnu5BMbJd3Gpeo", // Starter
+      "prod_Tnu52zUp9iulUV", // Creator
+      "prod_Tnu6nJL29mbNZ0"  // Pro
+    ];
 
-    while (hasMore) {
-      const batch = await stripe.prices.list({
-        active: true,
-        expand: ["data.product"],
-        limit: 100,
-        starting_after: startingAfter,
-      });
-      
-      allPrices = allPrices.concat(batch.data);
-      hasMore = batch.has_more;
-      if (hasMore) {
-        startingAfter = batch.data[batch.data.length - 1].id;
-      }
-    }
-
-    // Filter for WringoAI products only
-    const scoped = allPrices.filter(p => {
-      const prod = p.product;
-      return prod?.metadata?.app === "wringoai";
+    const prices = await stripe.prices.list({
+      active: true,
+      expand: ["data.product"],
+      limit: 100
     });
 
-    res.json(scoped.map(p => ({
+    const wringoPrices = prices.data.filter(p => 
+      wringoProductIds.includes(p.product?.id)
+    );
+
+    res.json(wringoPrices.map(p => ({
       priceId: p.id,
+      productId: p.product.id,
       name: p.product.name,
-      description: p.product.description,
+      description: p.product.description || "",
       amount: p.unit_amount,
-      interval: p.recurring?.interval || "one_time",
-      type: p.product.metadata.type,
-      category: p.product.metadata.category,
+      currency: p.currency,
+      interval: p.recurring?.interval || "one_time"
     })));
   } catch (err) {
-    console.error("[Stripe Pricing]", err);
-    res.status(500).json({ error: err.message });
+    console.error("[Stripe Pricing Error]", err.message);
+    res.status(500).json({ error: "Failed to fetch pricing" });
   }
 });
 
 /**
  * POST /api/stripe/checkout
- * Create subscription checkout session
+ * Create checkout session
  */
 router.post("/checkout", async (req, res) => {
   try {
     const { priceId, userId } = req.body;
 
-    if (!priceId || !userId) {
-      return res.status(400).json({ error: "Missing priceId or userId" });
+    if (!priceId) {
+      return res.status(400).json({ error: "priceId required" });
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/success`,
+      success_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/pricing`,
-      metadata: { userId },
+      metadata: { userId: userId || "anonymous" }
     });
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error("[Stripe Checkout]", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * POST /api/stripe/reload
- * Create one-time reload purchase (daily spend mechanics)
- */
-router.post("/reload", async (req, res) => {
-  try {
-    const { priceId, userId } = req.body;
-
-    if (!priceId || !userId) {
-      return res.status(400).json({ error: "Missing priceId or userId" });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/store`,
-      cancel_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/store`,
-      metadata: { userId },
-    });
-
-    res.json({ url: session.url });
-  } catch (err) {
-    console.error("[Stripe Reload]", err);
-    res.status(500).json({ error: err.message });
+    console.error("[Stripe Checkout Error]", err.message);
+    res.status(500).json({ error: "Failed to create checkout session" });
   }
 });
 

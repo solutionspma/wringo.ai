@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { stripe } from "../stripe.js";
-import { grantEntitlement, addUsage } from "../services/entitlements.js";
 
 const router = Router();
 
@@ -10,41 +9,38 @@ const router = Router();
  */
 router.post("/webhook", async (req, res) => {
   const sig = req.headers["stripe-signature"];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event;
-
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
   } catch (err) {
-    console.error("[Stripe Webhook] Signature verification failed:", err.message);
+    console.error("[Webhook Signature Error]", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  console.log(`[Stripe Webhook] Received: ${event.type}`);
+  console.log(`[Webhook] Received: ${event.type}`);
 
-  const data = event.data.object;
+  switch (event.type) {
+    case "checkout.session.completed":
+      const session = event.data.object;
+      console.log(`[Webhook] Payment successful for user: ${session.metadata?.userId}`);
+      // TODO: Grant subscription access
+      break;
 
-  try {
-    if (event.type === "checkout.session.completed") {
-      const userId = data.metadata.userId;
+    case "customer.subscription.deleted":
+      console.log(`[Webhook] Subscription cancelled`);
+      // TODO: Revoke access
+      break;
 
-      if (data.mode === "subscription") {
-        await grantEntitlement(userId, data.subscription);
-        console.log(`[Webhook] Granted subscription entitlement to user ${userId}`);
-      }
-
-      if (data.mode === "payment") {
-        await addUsage(userId, data.amount_total);
-        console.log(`[Webhook] Added ${data.amount_total} cents credits to user ${userId}`);
-      }
-    }
-
-    res.json({ received: true });
-  } catch (err) {
-    console.error("[Stripe Webhook] Handler error:", err);
-    res.status(500).json({ error: err.message });
+    default:
+      console.log(`[Webhook] Unhandled event: ${event.type}`);
   }
+
+  res.json({ received: true });
 });
 
 export default router;
