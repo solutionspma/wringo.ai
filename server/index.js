@@ -9,7 +9,7 @@ import webhooksRoutes from "./routes/webhooks.js";
 import leadsRoutes from "./routes/leads.js";
 import referralsRoutes from "./routes/referrals.js";
 import { attachTelnyxMediaWs } from "./ws/telnyx-media.js";
-import modcrm from "./services/modcrm.js";
+import level10crm from "./services/modcrm.js";
 
 dotenv.config({ quiet: true });
 
@@ -29,7 +29,7 @@ app.get("/health", (_req, res) => res.json({
   ok: true,
   version: "6.6-bidirectional-rtp", // Version marker for deployment verification
   services: {
-    modcrm: modcrm.getStatus()
+    level10crm: level10crm.getStatus()
   }
 }));
 
@@ -40,9 +40,9 @@ app.use("/api/webhooks", webhooksRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/referrals", referralsRoutes);
 
-// modCRM status endpoint
-app.get("/api/modcrm/status", (_req, res) => {
-  res.json(modcrm.getStatus());
+// Level 10 CRM status endpoint
+app.get("/api/level10crm/status", (_req, res) => {
+  res.json(level10crm.getStatus());
 });
 
 const server = http.createServer(app);
@@ -57,7 +57,7 @@ server.listen(PORT, () => {
   console.log(`   - Webhooks:          POST /api/webhooks/elevenlabs`);
   console.log(`   - Leads API:         POST /api/leads`);
   console.log(`   - Referrals API:     POST /api/referrals/capture`);
-  console.log(`   - modCRM status:     GET  /api/modcrm/status`);
+  console.log(`   - Level 10 CRM:      GET  /api/level10crm/status`);
   console.log(`   - WebSocket:         WS   /ws/telnyx-media`);
-  console.log(`\n🔗 Supabase: ${modcrm.isConfigured() ? "✅ Configured" : "⚠️  Not configured (set WRINGO_SUPABASE_URL & WRINGO_SUPABASE_SERVICE_KEY)"}`);
+  console.log(`\n🔗 Supabase: ${level10crm.isConfigured() ? "✅ Configured" : "⚠️  Not configured (set WRINGO_SUPABASE_URL & WRINGO_SUPABASE_SERVICE_KEY)"}`);
 });

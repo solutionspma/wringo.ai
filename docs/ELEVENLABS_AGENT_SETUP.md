@@ -1,13 +1,13 @@
 # ElevenLabs Agent Configuration
 
 This document explains how to configure your ElevenLabs Conversational AI agent (Jason) 
-to take real actions via webhook tools that connect to Pitch Marketing and modCRM.
+to take real actions via webhook tools that connect to Pitch Marketing and Level 10 CRM.
 
 ## Overview
 
 ```
 User talks to Jason → Jason captures info → Triggers webhook tool → 
-→ Wringo Backend → Routes to Pitch Marketing + modCRM
+→ Wringo Backend → Routes to Pitch Marketing + Level 10 CRM
 ```
 
 ## Setting Up Agent Tools in ElevenLabs
@@ -180,7 +180,7 @@ Go to: https://elevenlabs.io/app/conversational-ai/agents
       },
       "product": {
         "type": "string",
-        "description": "Which product or service (Wringo, website, modCRM, etc.)"
+        "description": "Which product or service (Wringo, website, Level 10 CRM, etc.)"
       }
     },
     "required": ["issue"]
@@ -294,9 +294,9 @@ Route to Pitch Marketing when someone wants:
 Add these to your Render service:
 
 ```
-# modCRM Integration
-MODCRM_API_URL=https://your-modcrm-instance.com
-MODCRM_API_KEY=your-modcrm-api-key
+# Level 10 CRM Integration (level10crm.com)
+LEVEL10_CRM_API_URL=https://level10crm.com/api
+LEVEL10_CRM_API_KEY=your-level10-api-key
 
 # Pitch Marketing Notifications
 PM_WEBHOOK_URL=https://pitchmarketing.agency/api/webhooks/wringo
@@ -380,7 +380,7 @@ curl https://wringo-backend.onrender.com/api/webhooks/pending
 │                    WRINGO BACKEND PROCESSES                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │  1. Log the action                                                   │
-│  2. Sync to modCRM (create/update contact)                          │
+│  2. Sync to Level 10 CRM (create/update contact)                    │
 │  3. Trigger email send (SendGrid/Mailgun)                           │
 │  4. Notify Pitch Marketing team if needed                           │
 │  5. Return success to ElevenLabs                                    │
@@ -388,7 +388,7 @@ curl https://wringo-backend.onrender.com/api/webhooks/pending
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         modCRM (MASTER)                              │
+│                      LEVEL 10 CRM (MASTER)                           │
 ├─────────────────────────────────────────────────────────────────────┤
 │  - Contact created/updated                                           │
 │  - Tags: [wringo, pricing_requested]                                │
@@ -402,7 +402,7 @@ curl https://wringo-backend.onrender.com/api/webhooks/pending
 │                     PITCH MARKETING TEAM                             │
 ├─────────────────────────────────────────────────────────────────────┤
 │  - Receives notification of new lead                                 │
-│  - Sees full context in modCRM                                      │
+│  - Sees full context in Level 10 CRM                                │
 │  - Can follow up with personalized outreach                         │
 │  - Track ROI from Wringo voice agent                                │
 └─────────────────────────────────────────────────────────────────────┘
@@ -412,7 +412,7 @@ curl https://wringo-backend.onrender.com/api/webhooks/pending
 
 ## Next Steps
 
-1. **Configure modCRM API** - You'll need to provide your modCRM API URL and key
+1. **Configure Level 10 CRM API** - You'll need to provide your Level 10 CRM API URL and key
 2. **Set up ElevenLabs tools** - Add the tools in the ElevenLabs dashboard
 3. **Connect email service** - Add SendGrid/Mailgun for automated emails
 4. **Set up Pitch Marketing webhook** - Create endpoint to receive notifications

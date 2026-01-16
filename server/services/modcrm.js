@@ -1,15 +1,15 @@
 /**
- * modCRM Integration Service
+ * Level 10 CRM Integration Service (level10crm.com)
  * 
- * Connects directly to modCRM's Supabase backend for:
+ * Connects directly to Level 10 CRM's Supabase backend for:
  * - Contact/lead management
  * - Activity logging
  * - Opportunity tracking
  * 
  * Environment variables:
- * - MODCRM_SUPABASE_URL: Supabase project URL
- * - MODCRM_SUPABASE_SERVICE_KEY: Service role key
- * - MODCRM_CONTAINER_ID: Container ID for Wringo leads
+ * - LEVEL10_CRM_SUPABASE_URL: Supabase project URL
+ * - LEVEL10_CRM_SUPABASE_SERVICE_KEY: Service role key
+ * - LEVEL10_CRM_CONTAINER_ID: Container ID for Wringo leads
  */
 
 import { createClient } from '@supabase/supabase-js';

@@ -1,0 +1,13 @@
+{
+  "$schema": "platform-contract-v1",
+  "platform": "wringo-ai",
+  "category": "comms-logistics",
+  "runtime_dependency": null,
+  "billing_model": "per-call",
+  "enforcement_model": "usage-based",
+  "governed_by": "self",
+  "status": "development",
+  "description": "AI voice agent platform for automated phone communications",
+  "primary_entities": ["agents", "calls", "conversations", "users"],
+  "integrations": ["supabase", "netlify", "telnyx", "elevenlabs"]
+}

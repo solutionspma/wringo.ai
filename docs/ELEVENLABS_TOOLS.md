@@ -13,7 +13,7 @@ with webhook tools that capture leads and referrals.
 
 ```
 User talks to Jason → Jason captures info → Triggers webhook tool → 
-→ Wringo Backend → Stores in Supabase → Syncs to modCRM
+→ Wringo Backend → Stores in Supabase → Syncs to Level 10 CRM
 ```
 
 ## Webhook Configuration (ElevenLabs Dashboard)
@@ -435,7 +435,7 @@ TELNYX_API_KEY=your-api-key
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      modCRM SYNC                             │
+│                   LEVEL 10 CRM SYNC                          │
 │  • Contact created/updated                                   │
 │  • Activity logged                                          │
 │  • Tags applied (wringo, referral-source)                   │

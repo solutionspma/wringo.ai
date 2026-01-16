@@ -6,7 +6,7 @@
  * - External integrations
  * - Manual lead entry
  * 
- * All leads flow to modCRM as the master record
+ * All leads flow to Level 10 CRM as the master record
  */
 
 import { Router } from "express";
@@ -64,7 +64,7 @@ router.post("/", async (req, res) => {
     // Store locally
     leadsStore.push(lead);
     
-    // Sync to modCRM
+    // Sync to Level 10 CRM
     const crmResult = await syncLeadToModCRM(lead);
     
     console.log(`[Lead Created] ${lead.id} - ${lead.email || lead.phone}`);
@@ -77,7 +77,7 @@ router.post("/", async (req, res) => {
         phone: lead.phone,
         status: lead.status
       },
-      modcrm: crmResult
+      level10crm: crmResult
     });
   } catch (err) {
     console.error("[Lead Create Error]", err);
@@ -153,7 +153,7 @@ router.patch("/:id", async (req, res) => {
   
   lead.updatedAt = new Date().toISOString();
   
-  // Sync update to modCRM
+  // Sync update to Level 10 CRM
   await syncLeadToModCRM(lead, true);
   
   res.json({ success: true, lead });
@@ -181,7 +181,7 @@ router.post("/:id/convert", async (req, res) => {
   };
   lead.updatedAt = new Date().toISOString();
   
-  // Create opportunity in modCRM
+  // Create opportunity in Level 10 CRM
   await createOpportunityInModCRM(lead);
   
   res.json({ success: true, lead });
@@ -250,27 +250,27 @@ function normalizePhone(phone) {
 }
 
 /**
- * Sync lead to modCRM
+ * Sync lead to Level 10 CRM
  */
 async function syncLeadToModCRM(lead, isUpdate = false) {
-  const MODCRM_API_URL = process.env.MODCRM_API_URL;
-  const MODCRM_API_KEY = process.env.MODCRM_API_KEY;
-  
-  if (!MODCRM_API_URL || !MODCRM_API_KEY) {
-    console.log("[modCRM] Not configured - lead stored locally only");
+  const LEVEL10_CRM_API_URL = process.env.LEVEL10_CRM_API_URL;
+  const LEVEL10_CRM_API_KEY = process.env.LEVEL10_CRM_API_KEY;
+
+  if (!LEVEL10_CRM_API_URL || !LEVEL10_CRM_API_KEY) {
+    console.log("[Level 10 CRM] Not configured - lead stored locally only");
     return { synced: false, reason: "not_configured" };
   }
   
   try {
     const endpoint = isUpdate && lead.modcrmId 
-      ? `${MODCRM_API_URL}/api/contacts/${lead.modcrmId}`
-      : `${MODCRM_API_URL}/api/contacts`;
+      ? `${LEVEL10_CRM_API_URL}/api/contacts/${lead.modcrmId}`
+      : `${LEVEL10_CRM_API_URL}/api/contacts`;
     
     const response = await fetch(endpoint, {
       method: isUpdate && lead.modcrmId ? "PATCH" : "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${MODCRM_API_KEY}`,
+        "Authorization": `Bearer ${LEVEL10_CRM_API_KEY}`,
         "X-Source": "wringo-leads-api"
       },
       body: JSON.stringify({
@@ -293,7 +293,7 @@ async function syncLeadToModCRM(lead, isUpdate = false) {
     });
     
     if (!response.ok) {
-      throw new Error(`modCRM API: ${response.status}`);
+      throw new Error(`Level 10 CRM API: ${response.status}`);
     }
     
     const result = await response.json();
@@ -301,28 +301,28 @@ async function syncLeadToModCRM(lead, isUpdate = false) {
     
     return { synced: true, modcrmId: lead.modcrmId };
   } catch (err) {
-    console.error("[modCRM Sync]", err.message);
+    console.error("[Level 10 CRM Sync]", err.message);
     return { synced: false, error: err.message };
   }
 }
 
 /**
- * Create opportunity in modCRM
+ * Create opportunity in Level 10 CRM
  */
 async function createOpportunityInModCRM(lead) {
-  const MODCRM_API_URL = process.env.MODCRM_API_URL;
-  const MODCRM_API_KEY = process.env.MODCRM_API_KEY;
-  
-  if (!MODCRM_API_URL || !MODCRM_API_KEY || !lead.modcrmId) {
+  const LEVEL10_CRM_API_URL = process.env.LEVEL10_CRM_API_URL;
+  const LEVEL10_CRM_API_KEY = process.env.LEVEL10_CRM_API_KEY;
+
+  if (!LEVEL10_CRM_API_URL || !LEVEL10_CRM_API_KEY || !lead.modcrmId) {
     return { created: false };
   }
   
   try {
-    const response = await fetch(`${MODCRM_API_URL}/api/opportunities`, {
+    const response = await fetch(`${LEVEL10_CRM_API_URL}/api/opportunities`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${MODCRM_API_KEY}`
+        "Authorization": `Bearer ${LEVEL10_CRM_API_KEY}`
       },
       body: JSON.stringify({
         opportunity: {
@@ -338,7 +338,7 @@ async function createOpportunityInModCRM(lead) {
     const result = await response.json();
     return { created: true, opportunityId: result.opportunity?.id };
   } catch (err) {
-    console.error("[modCRM Opportunity]", err.message);
+    console.error("[Level 10 CRM Opportunity]", err.message);
     return { created: false, error: err.message };
   }
 }

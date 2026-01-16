@@ -5,7 +5,7 @@
  * 1. ElevenLabs agent captures user info during conversation
  * 2. Agent triggers a "client tool" which calls our webhook
  * 3. We process the intent and route to appropriate action
- * 4. All leads sync to modCRM as master record
+ * 4. All leads sync to Level 10 CRM as master record
  */
 
 import { Router } from "express";
