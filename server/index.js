@@ -8,6 +8,8 @@ import telnyxRoutes from "./routes/telnyx.js";
 import webhooksRoutes from "./routes/webhooks.js";
 import leadsRoutes from "./routes/leads.js";
 import referralsRoutes from "./routes/referrals.js";
+import stripeCheckoutRoutes from "./routes/stripe-checkout.js";
+import stripeWebhookRoutes from "./routes/stripe-webhook.js";
 import { attachTelnyxMediaWs } from "./ws/telnyx-media.js";
 import level10crm from "./services/modcrm.js";
 
@@ -15,6 +17,11 @@ dotenv.config({ quiet: true });
 
 const app = express();
 app.use(cors());
+
+// Stripe webhook needs raw body
+app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
+
+// All other routes use JSON
 app.use(express.json({ limit: "2mb" }));
 
 // Root route for health probes
@@ -39,6 +46,8 @@ app.use("/api/telnyx", telnyxRoutes);
 app.use("/api/webhooks", webhooksRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/referrals", referralsRoutes);
+app.use("/api/stripe", stripeCheckoutRoutes);
+app.use("/api/stripe", stripeWebhookRoutes);
 
 // Level 10 CRM status endpoint
 app.get("/api/level10crm/status", (_req, res) => {
