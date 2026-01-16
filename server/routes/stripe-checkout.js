@@ -21,15 +21,24 @@ router.get("/pricing", async (req, res) => {
       limit: 100
     });
 
-    const wringoPrices = prices.data.filter(p => 
-      wringoProductIds.includes(p.product?.id)
-    );
+    console.log(`[Pricing] Fetched ${prices.data.length} prices from Stripe`);
+
+    const wringoPrices = prices.data.filter(p => {
+      const productId = typeof p.product === 'string' ? p.product : p.product?.id;
+      const match = wringoProductIds.includes(productId);
+      if (match) {
+        console.log(`[Pricing] Matched: ${productId}`);
+      }
+      return match;
+    });
+
+    console.log(`[Pricing] Returning ${wringoPrices.length} WringoAI prices`);
 
     res.json(wringoPrices.map(p => ({
       priceId: p.id,
-      productId: p.product.id,
-      name: p.product.name,
-      description: p.product.description || "",
+      productId: typeof p.product === 'string' ? p.product : p.product.id,
+      name: typeof p.product === 'string' ? 'Unknown' : p.product.name,
+      description: typeof p.product === 'string' ? '' : (p.product.description || ""),
       amount: p.unit_amount,
       currency: p.currency,
       interval: p.recurring?.interval || "one_time"
