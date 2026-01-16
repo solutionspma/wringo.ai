@@ -10,6 +10,57 @@ const supabase = createClient(
  * Order: Subscription → Credits → One-time Purchase → Block
  */
 
+/**
+ * Grant subscription entitlement
+ */
+export async function grantEntitlement(userId, subscriptionId) {
+  if (!userId || !subscriptionId) return;
+  
+  await supabase.from("subscriptions").upsert({
+    user_id: userId,
+    stripe_subscription_id: subscriptionId,
+    status: "active",
+    created_at: new Date().toISOString(),
+  });
+  
+  console.log(`[Entitlements] Granted subscription ${subscriptionId} to user ${userId}`);
+}
+
+/**
+ * Add credits from reload purchase
+ * Converts cents to credits (100 cents = 1 credit)
+ */
+export async function addUsage(userId, cents) {
+  if (!userId || !cents) return;
+  
+  const credits = Math.floor(cents / 100);
+  
+  const { data: existing } = await supabase
+    .from("credits")
+    .select("balance")
+    .eq("user_id", userId)
+    .eq("credit_type", "general")
+    .single();
+    
+  if (existing) {
+    await supabase
+      .from("credits")
+      .update({ balance: existing.balance + credits })
+      .eq("user_id", userId)
+      .eq("credit_type", "general");
+  } else {
+    await supabase
+      .from("credits")
+      .insert({
+        user_id: userId,
+        credit_type: "general",
+        balance: credits,
+      });
+  }
+  
+  console.log(`[Usage] Added ${credits} credits to user ${userId}`);
+}
+
 export async function checkEntitlement(userId, action) {
   // 1. Check active subscription
   const hasSubscription = await hasActiveSubscription(userId, action);

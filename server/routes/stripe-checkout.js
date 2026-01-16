@@ -1,63 +1,62 @@
 import { Router } from "express";
-import { stripe, getActivePricing } from "../stripe.js";
-import { createClient } from "@supabase/supabase-js";
+import { stripe } from "../stripe.js";
+import { grantEntitlement } from "../services/entitlements.js";
 
 const router = Router();
 
-const supabase = createClient(
-  process.env.WRINGO_SUPABASE_URL,
-  process.env.WRINGO_SUPABASE_SERVICE_KEY
-);
-
 /**
- * POST /api/stripe/create-checkout-session
- * Create a Stripe Checkout session
+ * GET /api/stripe/pricing
+ * Fetch all WringoAI products (subscriptions + reloads)
  */
-router.post("/create-checkout-session", async (req, res) => {
+router.get("/pricing", async (req, res) => {
   try {
-    const { priceId, userId, purchaseType, entitlementKey, successUrl, cancelUrl } = req.body;
-
-    if (!priceId || !userId || !purchaseType) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // Get or create Stripe customer
-    const { data: user } = await supabase
-      .from("users")
-      .select("stripe_customer_id, email")
-      .eq("id", userId)
-      .single();
-
-    let customerId = user?.stripe_customer_id;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { user_id: userId },
-      });
-      customerId = customer.id;
-
-      await supabase
-        .from("users")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", userId);
-    }
-
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: purchaseType === "subscription" ? "subscription" : "payment",
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl || `${process.env.BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${process.env.BASE_URL}/pricing`,
-      metadata: {
-        user_id: userId,
-        purchase_type: purchaseType,
-        entitlement_key: entitlementKey || "",
-      },
+    const prices = await stripe.prices.list({
+      active: true,
+      expand: ["data.product"],
+      limit: 100,
     });
 
-    res.json({ sessionId: session.id, url: session.url });
+    const scoped = prices.data.filter(p => {
+      const prod = p.product;
+      return prod?.metadata?.app === "wringoai";
+    });
+
+    res.json(scoped.map(p => ({
+      priceId: p.id,
+      name: p.product.name,
+      description: p.product.description,
+      amount: p.unit_amount,
+      interval: p.recurring?.interval || "one_time",
+      type: p.product.metadata.type,
+      category: p.product.metadata.category,
+    })));
+  } catch (err) {
+    console.error("[Stripe Pricing]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/stripe/checkout
+ * Create subscription checkout session
+ */
+router.post("/checkout", async (req, res) => {
+  try {
+    const { priceId, userId } = req.body;
+
+    if (!priceId || !userId) {
+      return res.status(400).json({ error: "Missing priceId or userId" });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/success`,
+      cancel_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/pricing`,
+      metadata: { userId },
+    });
+
+    res.json({ url: session.url });
   } catch (err) {
     console.error("[Stripe Checkout]", err);
     res.status(500).json({ error: err.message });
@@ -65,15 +64,28 @@ router.post("/create-checkout-session", async (req, res) => {
 });
 
 /**
- * GET /api/stripe/pricing
- * Get all active prices from Stripe
+ * POST /api/stripe/reload
+ * Create one-time reload purchase (daily spend mechanics)
  */
-router.get("/pricing", async (req, res) => {
+router.post("/reload", async (req, res) => {
   try {
-    const pricing = await getActivePricing();
-    res.json(pricing);
+    const { priceId, userId } = req.body;
+
+    if (!priceId || !userId) {
+      return res.status(400).json({ error: "Missing priceId or userId" });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/store`,
+      cancel_url: `${process.env.FRONTEND_URL || "https://wringoai.com"}/store`,
+      metadata: { userId },
+    });
+
+    res.json({ url: session.url });
   } catch (err) {
-    console.error("[Stripe Pricing]", err);
+    console.error("[Stripe Reload]", err);
     res.status(500).json({ error: err.message });
   }
 });
