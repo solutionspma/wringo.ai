@@ -10,22 +10,41 @@ const router = Router();
  */
 router.get("/pricing", async (req, res) => {
   try {
-    const prices = await stripe.prices.list({
-      active: true,
-      expand: ["data.product"],
-      limit: 20,
+    // Fetch ALL active prices (Stripe default is 10, max is 100 per request)
+    let allPrices = [];
+    let hasMore = true;
+    let startingAfter = undefined;
+
+    while (hasMore) {
+      const batch = await stripe.prices.list({
+        active: true,
+        expand: ["data.product"],
+        limit: 100,
+        starting_after: startingAfter,
+      });
+      
+      allPrices = allPrices.concat(batch.data);
+      hasMore = batch.has_more;
+      if (hasMore) {
+        startingAfter = batch.data[batch.data.length - 1].id;
+      }
+    }
+
+    // Filter for WringoAI products only
+    const scoped = allPrices.filter(p => {
+      const prod = p.product;
+      return prod?.metadata?.app === "wringoai";
     });
 
-    // DEBUG MODE: Return raw Stripe data to verify what we're getting
-    res.json({
-      count: prices.data.length,
-      raw: prices.data.map(p => ({
-        id: p.id,
-        product: p.product?.id,
-        name: p.product?.name,
-        metadata: p.product?.metadata,
-      })),
-    });
+    res.json(scoped.map(p => ({
+      priceId: p.id,
+      name: p.product.name,
+      description: p.product.description,
+      amount: p.unit_amount,
+      interval: p.recurring?.interval || "one_time",
+      type: p.product.metadata.type,
+      category: p.product.metadata.category,
+    })));
   } catch (err) {
     console.error("[Stripe Pricing]", err);
     res.status(500).json({ error: err.message });
