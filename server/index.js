@@ -28,13 +28,14 @@ app.use(express.json({ limit: "2mb" }));
 app.get("/", (_req, res) => res.json({ 
   service: "wringo.ai backend",
   status: "running",
-  version: "5.0.1"
+  version: "8.1-PAGINATION-FIX-DEPLOYED"
 }));
 
 // Health check with service status
 app.get("/health", (_req, res) => res.json({ 
   ok: true,
-  version: "7.0-stripe-billing", // Version marker for deployment verification
+  version: "8.1-PAGINATION-FIX", 
+  commit: process.env.RENDER_GIT_COMMIT || "local",
   services: {
     level10crm: level10crm.getStatus()
   }
