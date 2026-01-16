@@ -16,7 +16,12 @@ router.get("/pricing", async (req, res) => {
       limit: 100,
     });
 
-    res.json(prices.data.map(p => ({
+    const scoped = prices.data.filter(p => {
+      const prod = p.product;
+      return prod?.metadata?.app === "wringoai";
+    });
+
+    res.json(scoped.map(p => ({
       priceId: p.id,
       name: p.product.name,
       description: p.product.description,

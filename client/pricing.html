@@ -43,6 +43,19 @@
         const res = await fetch('https://wringo-backend.onrender.com/api/stripe/pricing');
         const prices = await res.json();
 
+        console.log('Loaded prices:', prices.length);
+
+        if (prices.length === 0) {
+          document.getElementById('pricing-container').innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #ff6b6b;">
+              <div style="font-size: 48px; margin-bottom: 20px;">📭</div>
+              <h3>No WringoAI Products Yet</h3>
+              <p>Create products in Stripe dashboard with metadata: <code>app=wringoai</code></p>
+            </div>
+          `;
+          return;
+        }
+
         // Group by interval
         const subscriptions = prices.filter(p => p.interval && p.interval !== 'one_time');
         const oneTime = prices.filter(p => p.interval === 'one_time' || !p.interval);
