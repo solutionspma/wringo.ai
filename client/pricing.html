@@ -40,13 +40,28 @@
 
   <script>
     async function buy(priceId) {
-      const res = await fetch('https://wringo-backend.onrender.com/api/checkout', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({priceId})
-      });
-      const {url} = await res.json();
-      window.location = url;
+      try {
+        const res = await fetch('https://wringo-backend.onrender.com/api/checkout', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({priceId})
+        });
+
+        const data = await res.json();
+
+        if (!data.url) {
+          console.error("No Stripe URL returned", data);
+          alert("Checkout failed");
+          return;
+        }
+
+        // 🚨 THIS IS THE FIX
+        window.location.assign(data.url);
+
+      } catch (err) {
+        console.error("Checkout error:", err);
+        alert("Checkout error – see console");
+      }
     }
   </script>
 </body>
