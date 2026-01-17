@@ -22,12 +22,17 @@ router.get("/pricing", async (req, res) => {
     });
 
     console.log(`[Pricing] Fetched ${prices.data.length} prices from Stripe`);
+    
+    // DEBUG: Log first 3 products to see structure
+    prices.data.slice(0, 3).forEach(p => {
+      console.log(`[DEBUG] Price ${p.id}: product type=${typeof p.product}, id=${typeof p.product === 'string' ? p.product : p.product?.id}`);
+    });
 
     const wringoPrices = prices.data.filter(p => {
       const productId = typeof p.product === 'string' ? p.product : p.product?.id;
       const match = wringoProductIds.includes(productId);
       if (match) {
-        console.log(`[Pricing] Matched: ${productId}`);
+        console.log(`[Pricing] ✓ MATCHED: ${productId}`);
       }
       return match;
     });
