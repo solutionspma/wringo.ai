@@ -8,8 +8,7 @@ import telnyxRoutes from "./routes/telnyx.js";
 import webhooksRoutes from "./routes/webhooks.js";
 import leadsRoutes from "./routes/leads.js";
 import referralsRoutes from "./routes/referrals.js";
-import stripeCheckoutRoutes from "./routes/stripe-checkout.js";
-import stripeWebhookRoutes from "./routes/stripe-webhook.js";
+import stripeRoutes from "./routes/stripe.js";
 import { attachTelnyxMediaWs } from "./ws/telnyx-media.js";
 import level10crm from "./services/modcrm.js";
 
@@ -48,8 +47,7 @@ app.use("/api/telnyx", telnyxRoutes);
 app.use("/api/webhooks", webhooksRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/referrals", referralsRoutes);
-app.use("/api/stripe", stripeCheckoutRoutes);
-app.use("/api/stripe", stripeWebhookRoutes);
+app.use("/api", stripeRoutes);
 
 // Level 10 CRM status endpoint
 app.get("/api/level10crm/status", (_req, res) => {

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WringoAI Pricing</title>
+  <style>
+    body { font-family: Arial; max-width: 1200px; margin: 50px auto; padding: 20px; }
+    h1 { text-align: center; }
+    .plans { display: flex; gap: 30px; justify-content: center; margin-top: 40px; }
+    .plan { border: 2px solid #333; padding: 30px; border-radius: 10px; text-align: center; min-width: 250px; }
+    .plan h2 { margin-top: 0; }
+    .price { font-size: 2.5rem; font-weight: bold; color: #0066cc; margin: 20px 0; }
+    button { background: #0066cc; color: white; border: none; padding: 15px 40px; font-size: 1.1rem; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0052a3; }
+  </style>
+</head>
+<body>
+  <h1>WringoAI Pricing</h1>
+  <div class="plans">
+    <div class="plan">
+      <h2>Starter</h2>
+      <div class="price">$9<span style="font-size:1rem">/mo</span></div>
+      <p>50 AI voice calls per month</p>
+      <button onclick="buy('price_1SqIHQBSjdMJHNWLvou9tnGx')">Subscribe</button>
+    </div>
+    
+    <div class="plan">
+      <h2>Creator</h2>
+      <div class="price">$19<span style="font-size:1rem">/mo</span></div>
+      <p>200 AI voice calls per month</p>
+      <button onclick="buy('price_1SqIHiBSjdMJHNWLPdcXOjia')">Subscribe</button>
+    </div>
+    
+    <div class="plan">
+      <h2>Pro</h2>
+      <div class="price">$49<span style="font-size:1rem">/mo</span></div>
+      <p>Unlimited AI voice calls</p>
+      <button onclick="buy('price_1SqIHwBSjdMJHNWLyQiTjpq0')">Subscribe</button>
+    </div>
+  </div>
+
+  <script>
+    async function buy(priceId) {
+      const res = await fetch('https://wringo-backend.onrender.com/api/checkout', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({priceId})
+      });
+      const {url} = await res.json();
+      window.location = url;
+    }
+  </script>
+</body>
+</html>
